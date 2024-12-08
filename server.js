@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
+const testRoutes = require('./routes/test');
 const app = express();
 
 dotenv.config();
@@ -19,9 +20,7 @@ mongoose.connect(process.env.MONGO_URI, {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.get('/api/test', (req, res) => {
-  res.json({ notification: "true" }); // Send JSON response
-});
+app.use('/api/test', testRoutes);
 // app.use('/api/orders', require('./routes/orders')); // Frame orders
 
 const PORT = process.env.PORT || 5000;
