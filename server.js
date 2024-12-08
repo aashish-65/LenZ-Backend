@@ -20,7 +20,7 @@ mongoose.connect(process.env.MONGO_URI, {
 // Routes
 app.use('/api/auth', authRoutes);
 app.get('/api/test', (req, res) => {
-  res.json({ notification: "false" }); // Send JSON response
+  res.json({ notification: "true" }); // Send JSON response
 });
 // app.use('/api/orders', require('./routes/orders')); // Frame orders
 
