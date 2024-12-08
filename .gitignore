@@ -1,0 +1,102 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs/
+*.log
+logs/*.log
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# MongoDB data
+/data/db
+/data/configdb
+
+# Environment variables
+.env
+
+# Dependency directories
+/.pnp
+.pnp.js
+
+# Optional npm cache directory
+.npm
+
+# Build output
+dist/
+build/
+
+# Static files
+/public/static
+
+# Temporary files
+tmp/
+temp/
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+*.swt
+*.bak
+*.tmp
+*.orig
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Production build (React)
+client/build/
+
+# Compiled output
+*.out
+*.o
+*.so
+
+# SASS/CSS cache
+.sass-cache/
+*.css.map
+
+# Webpack cache
+.cache/
+.cache-loader/
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Test files
+jest/
+jest-cache/
+jest-output/
+*.test.js
+*.spec.js
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettier_cache/
+
+# Parcel-bundler cache
+.cache/
+
+# Next.js
+.next/
+
+# Storybook
+storybook-static/
+
+# TypeScript
+*.tsbuildinfo
+
+#enviroment
+.env
