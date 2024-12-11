@@ -14,7 +14,7 @@ router.post('/signup', async (req, res) => {
     // Check if the user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
         if (existingUser) {
-            return res.status(400).json({ error: 'Email or phone number already exists' });
+            return res.status(401).json({ error: 'Email or phone number already exists' });
         }
 
     // Hash the password
@@ -58,13 +58,13 @@ router.post('/login', async (req, res) => {
     // Check if the user exists
     const user = await User.findOne({ userId });
     if (!user) {
-      return res.status(400).json({ error: 'User not found' });
+      return res.status(401).json({ error: 'User not found' });
     }
 
     // Check the password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ error: 'Invalid password' });
+      return res.status(401).json({ error: 'Invalid password' });
     }
 
     // Generate JWT

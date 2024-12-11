@@ -34,7 +34,7 @@ router.post("/login", verifyApiKey, async (req, res) => {
     const admin = await Admin.findOne({ adminId });
     if (!admin) {
       return res
-        .status(400)
+        .status(401)
         .json({ error: "Admin not found", confirmation: false });
     }
 
@@ -42,7 +42,7 @@ router.post("/login", verifyApiKey, async (req, res) => {
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
       return res
-        .status(400)
+        .status(401)
         .json({ error: "Invalid password", confirmation: false });
     }
 
@@ -82,7 +82,7 @@ router.post("/signup", verifyApiKey, async (req, res) => {
     const existingAdmin = await Admin.findOne({ $or: [{ email }, { phone }] });
     if (existingAdmin) {
       return res
-        .status(400)
+        .status(401)
         .json({ error: "Admin with this email or phone already exists" , confirmation: false});
     }
 
