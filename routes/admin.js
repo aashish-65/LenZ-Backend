@@ -14,7 +14,19 @@ dotenv.config();
 //     res.json({ apiKey });
 // });
 
-router.post('/login', async (req, res) => {
+// Middleware to verify API Key
+const verifyApiKey = (req, res, next) => {
+    const apiKey = req.headers['x-api-key'];
+    const authorizedApiKey = process.env.AUTHORIZED_API_KEY;
+  
+    if (apiKey === authorizedApiKey) {
+      next();
+    } else {
+      return res.status(403).json({ error: 'Access denied. Invalid API key.' });
+    }
+  };
+
+router.post('/login', verifyApiKey, async (req, res) => {
     const { adminId, password } = req.body;
 
     try {
@@ -38,18 +50,6 @@ router.post('/login', async (req, res) => {
         res.status(500).json({ error: 'Server error during login' });
     }
 });
-
-// Middleware to verify API Key
-const verifyApiKey = (req, res, next) => {
-    const apiKey = req.headers['x-api-key'];
-    const authorizedApiKey = process.env.AUTHORIZED_API_KEY;
-  
-    if (apiKey === authorizedApiKey) {
-      next();
-    } else {
-      return res.status(403).json({ error: 'Access denied. Invalid API key.' });
-    }
-  };
   
   // Function to generate unique adminId
   const generateUniqueAdminId = async () => {
