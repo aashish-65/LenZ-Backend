@@ -19,10 +19,14 @@ const verifyApiKey = (req, res, next) => {
   const apiKey = req.headers["lenz-api-key"];
   const authorizedApiKey = process.env.AUTHORIZED_API_KEY;
 
+  if (!apiKey) {
+      return res.status(401).json({ error: "API key is missing.", confirmation: false });
+  }
+
   if (apiKey === authorizedApiKey) {
-    next();
+      next();
   } else {
-    return res.status(403).json({ error: "Access denied. Invalid API key.", confirmation: false });
+      return res.status(403).json({ error: "Access denied. Invalid API key.", confirmation: false });
   }
 };
 
