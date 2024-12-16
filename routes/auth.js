@@ -25,7 +25,7 @@ router.post('/signup', async (req, res) => {
     let isUnique = false;
     // Generate a unique 10-digit ID
     while (!isUnique) {
-      userId = Math.floor(1000000000 + Math.random() * 9000000000);
+      userId = Math.floor(100000 + Math.random() * 900000);
       const existingUser = await User.findOne({ userId });
       if (!existingUser) {
           isUnique = true;
