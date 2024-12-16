@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth');
 const testRoutes = require('./routes/test');
 const shopRoutes = require('./routes/shops');
 const adminRoutes = require('./routes/admin');
+const chargeRoutes = require('./routes/charge');
 const app = express();
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/charges', chargeRoutes);
 // app.use('/api/orders', require('./routes/orders')); // Frame orders
 
 const PORT = process.env.PORT || 5000;
