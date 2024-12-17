@@ -78,7 +78,6 @@ router.put("/update-shifting-charges", verifyApiKey, async (req, res) => {
       confirmation: true,
     });
   } catch (error) {
-    console.error("Error updating shifting charges:", error);
     res.status(500).json({ error: "Internal server error", confirmation: false });
   }
 });
@@ -107,7 +106,6 @@ router.put('/update-fitting-charges', verifyApiKey, async (req, res) => {
       confirmation: true,
     });
   } catch (error) {
-    console.error('Error updating fitting charges:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
