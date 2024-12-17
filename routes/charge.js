@@ -54,7 +54,7 @@ router.put("/update-shifting-charges", verifyApiKey, async (req, res) => {
       typeof Supra !== "number" ||
       typeof Rimless !== "number"
     ) {
-      return res.status(400).json({ error: "Invalid data format" });
+      return res.status(400).json({ error: "Invalid data format", confirmation: false });
     }
 
     const updatedShiftingCharges = await Charges.findOneAndUpdate(
@@ -70,7 +70,7 @@ router.put("/update-shifting-charges", verifyApiKey, async (req, res) => {
     );
 
     if (!updatedShiftingCharges) {
-      return res.status(404).json({ error: "Shifting charges not found" });
+      return res.status(404).json({ error: "Shifting charges not found" , confirmation: false});
     }
 
     res.status(200).json({
@@ -88,7 +88,7 @@ router.put('/update-fitting-charges', verifyApiKey, async (req, res) => {
     const { data } = req.body;
 
     if (!data || typeof data !== 'object') {
-      return res.status(400).json({ error: 'Invalid or missing data' });
+      return res.status(400).json({ error: 'Invalid or missing data', confirmation: false });
     }
 
     const updatedFittingCharges = await Charges.findOneAndUpdate(
@@ -98,7 +98,7 @@ router.put('/update-fitting-charges', verifyApiKey, async (req, res) => {
     );
 
     if (!updatedFittingCharges) {
-      return res.status(404).json({ error: 'Fitting charges not found' });
+      return res.status(404).json({ error: 'Fitting charges not found' , confirmation: false});
     }
 
     res.status(200).json({
