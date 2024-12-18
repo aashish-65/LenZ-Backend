@@ -30,7 +30,7 @@ router.post("/place-order", async (req, res) => {
   try {
     const { userId } = req.params;
     const orders = await Order.find({ userId }).populate("userId", "name email phone plan");
-    res.status(200).json({ data: orders, confirmation: true });
+    res.status(200).json({ data: orders });
   } catch (error) {
     res.status(500).json({ message: "Failed to retrieve orders", confirmation: false ,error });
   }
