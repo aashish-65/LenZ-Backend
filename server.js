@@ -7,6 +7,7 @@ const testRoutes = require('./routes/test');
 const shopRoutes = require('./routes/shops');
 const adminRoutes = require('./routes/admin');
 const chargeRoutes = require('./routes/charge');
+const orderRoutes = require('./routes/orders');
 const app = express();
 
 dotenv.config();
@@ -27,7 +28,7 @@ app.use('/api/test', testRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/charges', chargeRoutes);
-// app.use('/api/orders', require('./routes/orders')); // Frame orders
+app.use('/api/orders', orderRoutes); // Frame orders
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
