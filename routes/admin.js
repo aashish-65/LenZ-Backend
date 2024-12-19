@@ -7,13 +7,6 @@ const router = express.Router();
 const dotenv = require("dotenv");
 dotenv.config();
 
-// Create api key route
-// router.post('/create-api-key', async (req, res) => {
-//     const apiKey = crypto.randomBytes(16).toString('hex');
-// console.log(apiKey);
-//     res.json({ apiKey });
-// });
-
 // Middleware to verify API Key
 const verifyApiKey = (req, res, next) => {
   const apiKey = req.headers["lenz-api-key"];

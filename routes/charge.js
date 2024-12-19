@@ -87,9 +87,9 @@ router.put('/update-fitting-charges', verifyApiKey, async (req, res) => {
   try {
     const { data } = req.body;
 
-    if (!data || typeof data !== 'object') {
-      return res.status(400).json({ error: 'Invalid or missing data', confirmation: false });
-    }
+    // if (!data || typeof data !== 'object') {
+    //   return res.status(400).json({ error: 'Invalid or missing data', confirmation: false });
+    // }
 
     const updatedFittingCharges = await Charges.findOneAndUpdate(
       { type: 'fittingCharges' },

@@ -17,6 +17,7 @@ const orderSchema = new mongoose.Schema({
   shiftingCharge: Number,
   totalAmount: Number,
   paymentType: String,
+  orderPlaced: Boolean,
 }, { timestamps: true });
 
 module.exports = mongoose.model("Order", orderSchema);
