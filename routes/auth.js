@@ -7,15 +7,23 @@ const router = express.Router();
 
 // User Signup
 router.post('/signup', async (req, res) => {
-  const { name, email, phone, password, plan } = req.body;
+  const {
+    name,
+    email,
+    phone,
+    password,
+    plan,
+    shopName,
+    alternatePhone,
+    address,
+  } = req.body;
 
   try {
-
     // Check if the user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
-        if (existingUser) {
-            return res.status(401).json({ error: 'Email or phone number already exists' });
-        }
+    if (existingUser) {
+      return res.status(401).json({ error: 'Email or phone number already exists' });
+    }
 
     // Hash the password
     const salt = await bcrypt.genSalt(10);
@@ -28,9 +36,14 @@ router.post('/signup', async (req, res) => {
       userId = Math.floor(100000 + Math.random() * 900000);
       const existingUser = await User.findOne({ userId });
       if (!existingUser) {
-          isUnique = true;
+        isUnique = true;
       }
-  }
+    }
+
+    // Validate the address
+    if (!address || !address.line1 || !address.city || !address.state || !address.pinCode) {
+      return res.status(400).json({ error: 'Incomplete address details' });
+    }
 
     // Create a new user
     const newUser = new User({
@@ -38,14 +51,25 @@ router.post('/signup', async (req, res) => {
       name,
       email,
       phone,
+      alternatePhone,
+      shopName,
       password: hashedPassword,
       plan,
+      address: {
+        line1: address.line1,
+        line2: address.line2 || '',
+        landmark: address.landmark || '',
+        city: address.city,
+        state: address.state,
+        pinCode: address.pinCode,
+      },
     });
 
     await newUser.save();
 
     res.status(201).json({ message: 'Signup successful', userId });
   } catch (error) {
+    console.error(error.message);
     res.status(500).json({ error: 'Server error during signup' });
   }
 });
