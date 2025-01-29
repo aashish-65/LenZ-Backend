@@ -120,7 +120,16 @@ router.patch("/:groupOrderId/accept-pickup", async (req, res) => {
   }
 });
 
-router.get("/get-group-orders", async (req, res) => {
+router.get("/get-all-group-orders", async (req, res) => {
+  try {
+    const groupOrders = await GroupOrder.find().populate("orders");
+    res.status(200).json({ data: groupOrders });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch group orders", error });
+  }
+});
+
+router.get("/get-group-orders", authenticate, async (req, res) => {
   try {
     const userId = req.user.id; // Assuming authenticate middleware adds user info to req
     console.log(userId);
