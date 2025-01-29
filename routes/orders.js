@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-
+const authenticate = require('../middleware/authenticate');
 // Import your database model (adjust based on your DB setup)
 const Order = require("../models/Order");
 const User = require("../models/User");
@@ -57,7 +57,9 @@ router.post("/create-group-order", async (req, res) => {
     // Calculate total amount
     const totalAmount = orders.reduce((sum, order) => sum + order.totalAmount, 0);
     const deliveryCharge = 100; // Fixed delivery charge
-    const finalAmount = paymentOption === "full" ? totalAmount + deliveryCharge : deliveryCharge;
+    const finalAmount = totalAmount + deliveryCharge;
+    const paidAmount = paymentOption === "full" ? totalAmount + deliveryCharge : deliveryCharge;
+    const leftAmount = paymentOption === "full" ? 0 : totalAmount;
 
     // Create the group order
     const newGroupOrder = new GroupOrder({
@@ -66,7 +68,10 @@ router.post("/create-group-order", async (req, res) => {
       totalAmount,
       deliveryCharge,
       finalAmount,
+      paidAmount,
+      leftAmount,
       paymentStatus: paymentOption === "full" ? "completed" : "pending",
+      tracking_status: "Order Placed For Pickup",
     });
     const savedGroupOrder = await newGroupOrder.save();
 
@@ -90,5 +95,51 @@ const notifyAdmin = (groupOrder) => {
   console.log(`Notification: A new group order has been created with ID ${groupOrder._id}`);
   // You can integrate with a notification service (e.g., email, SMS, or WebSocket)
 };
+
+
+router.patch("/:groupOrderId/accept-pickup", async (req, res) => {
+  try {
+    const { groupOrderId } = req.params;
+    const { rider_id, rider_name, rider_phone } = req.body;
+
+    // Validate if the group order exists
+    const groupOrder = await GroupOrder.findById(groupOrderId);
+    if (!groupOrder) {
+      return res.status(404).json({ message: "GroupOrder not found", confirmation: false });
+    }
+
+    // Update the group order with rider details and change status
+    groupOrder.tracking_status = "Pickup Accepted";
+    groupOrder.rider_id = rider_id;
+    groupOrder.rider_details = { name: rider_name, phone: rider_phone };
+    await groupOrder.save();
+
+    res.status(200).json({ message: "Pickup accepted successfully", confirmation: true, data: groupOrder });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to accept pickup", confirmation: false, error });
+  }
+});
+
+router.get("/get-group-orders", async (req, res) => {
+  try {
+    const userId = req.user.id; // Assuming authenticate middleware adds user info to req
+    console.log(userId);
+    const groupOrders = await GroupOrder.find({ userId }).populate("orders");
+    res.status(200).json({ data: groupOrders });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch group orders", error });
+  }
+});
+
+// GET /api/orders/get-group-order/:groupOrderId
+router.get("/get-group-order/:groupOrderId", async (req, res) => {
+  try {
+    const { groupOrderId } = req.params;
+    const groupOrder = await GroupOrder.findById(groupOrderId).populate("orders");
+    res.status(200).json({ data: groupOrder });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch group order details", error });
+  }
+});
 
 module.exports = router;
