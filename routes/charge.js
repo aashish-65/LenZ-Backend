@@ -2,7 +2,22 @@ const express = require("express");
 const router = express.Router();
 const Charges = require("../models/Charge");
 
-router.get("/:type", async (req, res) => {
+const verifyApiKey = (req, res, next) => {
+  const apiKey = req.headers["lenz-api-key"];
+  const authorizedApiKey = process.env.AUTHORIZED_API_KEY;
+
+  if (!apiKey) {
+      return res.status(401).json({ error: "API key is missing.", confirmation: false });
+  }
+
+  if (apiKey === authorizedApiKey) {
+      next();
+  } else {
+      return res.status(403).json({ error: "Access denied. Invalid API key.", confirmation: false });
+  }
+};
+
+router.get("/:type", verifyApiKey, async (req, res) => {
   const { type } = req.params;
 
   try {
@@ -24,25 +39,6 @@ router.get("/", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch data", error });
   }
 });
-
-const verifyApiKey = (req, res, next) => {
-  const apiKey = req.headers["lenz-api-key"];
-  const authorizedApiKey = process.env.AUTHORIZED_API_KEY;
-
-  if (!apiKey) {
-    return res
-      .status(401)
-      .json({ error: "API key is missing.", confirmation: false });
-  }
-
-  if (apiKey === authorizedApiKey) {
-    next();
-  } else {
-    return res
-      .status(403)
-      .json({ error: "Access denied. Invalid API key.", confirmation: false });
-  }
-};
 
 // Endpoint to update shifting charges
 router.put("/update-shifting-charges", verifyApiKey, async (req, res) => {

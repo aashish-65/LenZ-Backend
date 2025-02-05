@@ -129,7 +129,7 @@ const notifyAdmin = (groupOrder) => {
   // You can integrate with a notification service (e.g., email, SMS, or WebSocket)
 };
 
-router.get("/get-all-group-orders", async (req, res) => {
+router.get("/get-all-group-orders", verifyApiKey, async (req, res) => {
   try {
     const groupOrders = await GroupOrder.find().populate("orders");
     res.status(200).json({ data: groupOrders });
