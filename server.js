@@ -10,10 +10,12 @@ const chargeRoutes = require('./routes/charge');
 const orderRoutes = require('./routes/orders');
 const profileRoutes = require('./routes/profile');
 const otpRoutes = require('./routes/otp');
+const paymentRoutes = require('./routes/payment');
 const app = express();
 
 dotenv.config();
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(cors());
 
 // MongoDB Connection
@@ -33,6 +35,7 @@ app.use('/api/charges', chargeRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/otp', otpRoutes);
+app.use('/api/payments', paymentRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

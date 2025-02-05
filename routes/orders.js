@@ -5,6 +5,18 @@ const authenticate = require('../middleware/authenticate');
 const Order = require("../models/Order");
 const User = require("../models/User");
 const GroupOrder = require("../models/GroupOrder");
+const TrackingOtp = require("../models/TrackingOtp");
+const Rider = require("../models/Rider");
+
+const nodemailer = require("nodemailer");
+
+const transporter = nodemailer.createTransport({
+  service: 'Gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
 
 // Route to store order details
 router.post("/place-order", async (req, res) => {
@@ -96,30 +108,6 @@ const notifyAdmin = (groupOrder) => {
   // You can integrate with a notification service (e.g., email, SMS, or WebSocket)
 };
 
-
-router.patch("/:groupOrderId/accept-pickup", async (req, res) => {
-  try {
-    const { groupOrderId } = req.params;
-    const { rider_id, rider_name, rider_phone } = req.body;
-
-    // Validate if the group order exists
-    const groupOrder = await GroupOrder.findById(groupOrderId);
-    if (!groupOrder) {
-      return res.status(404).json({ message: "GroupOrder not found", confirmation: false });
-    }
-
-    // Update the group order with rider details and change status
-    groupOrder.tracking_status = "Pickup Accepted";
-    groupOrder.rider_id = rider_id;
-    groupOrder.rider_details = { name: rider_name, phone: rider_phone };
-    await groupOrder.save();
-
-    res.status(200).json({ message: "Pickup accepted successfully", confirmation: true, data: groupOrder });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to accept pickup", confirmation: false, error });
-  }
-});
-
 router.get("/get-all-group-orders", async (req, res) => {
   try {
     const groupOrders = await GroupOrder.find().populate("orders");
@@ -148,6 +136,329 @@ router.get("/get-group-order/:groupOrderId", async (req, res) => {
     res.status(200).json({ data: groupOrder });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch group order details", error });
+  }
+});
+
+
+// PATCH /api/orders/:groupOrderId/accept-pickup
+router.patch("/:groupOrderId/accept-pickup", authenticate, async (req, res) => {
+  try {
+    const { groupOrderId } = req.params;
+    const { pickup_rider_id, rider_name, rider_phone } = req.body;
+
+    // Validate if the group order exists
+    const groupOrder = await GroupOrder.findById(groupOrderId).populate("userId");
+    if (!groupOrder) {
+      return res.status(404).json({ message: "GroupOrder not found", confirmation: false });
+    }
+
+    // Validate if the rider exists
+    const rider = await Rider.findById(pickup_rider_id);
+    if (!rider) {
+      return res.status(404).json({ message: "Rider not found", confirmation: false });
+    }
+
+     // Update the rider's availability to false
+     rider.available = false;
+     await rider.save(); 
+
+    // Update the group order with rider details and change status
+    groupOrder.tracking_status = "Pickup Accepted";
+    groupOrder.pickup_rider_id = pickup_rider_id;
+    groupOrder.pickup_rider_details = { name: rider_name, phone: rider_phone };
+    await groupOrder.save();
+
+    // Generate a 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Save the OTP to the database
+    await TrackingOtp.create({
+      groupOrder_id: groupOrderId,
+      otp_code: otp,
+      purpose: "pickup",
+    });
+
+    // Send the OTP to the user's email
+    const userEmail = groupOrder.userId.email; // Get the user's email
+    await transporter.sendMail({
+      from: `"LenZ" <${process.env.EMAIL_USER}>`,
+      to: userEmail,
+      subject: "Your OTP for Order Pickup",
+      text: `Your OTP for order pickup is ${otp}. It will expire in 5 minutes.`,
+    });
+
+    res.status(200).json({ message: "Pickup accepted successfully. OTP sent to your email.", confirmation: true, data: groupOrder });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to accept pickup", confirmation: false, error });
+  }
+});
+
+// POST /api/orders/:groupOrderId/verify-pickup-otp
+router.post("/:groupOrderId/verify-pickup-otp", authenticate, async (req, res) => {
+  try {
+    const { groupOrderId } = req.params;
+    const { otp_code } = req.body;
+
+    // Find the OTP in the database
+    const otpRecord = await TrackingOtp.findOne({ groupOrder_id: groupOrderId, otp_code, purpose: "pickup" });
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Invalid OTP", confirmation: false });
+    }
+
+    // Update the group order status
+    const groupOrder = await GroupOrder.findById(groupOrderId).populate("admin_id");
+    if (!groupOrder) {
+      return res.status(404).json({ message: "GroupOrder not found", confirmation: false });
+    }
+
+    groupOrder.tracking_status = "Order Picked Up";
+    await groupOrder.save();
+
+    // Delete the OTP after verification
+    await TrackingOtp.deleteOne({ _id: otpRecord._id });
+
+    const adminOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await TrackingOtp.create({
+      groupOrder_id: groupOrderId,
+      otp_code: adminOtp,
+      purpose: "admin_receipt",
+    });
+
+    // Send the OTP to the admin's email
+    const adminEmail = groupOrder.admin_id.email;
+    await transporter.sendMail({
+      from: `"LenZ" <${process.env.EMAIL_USER}>`,
+      to: adminEmail,
+      subject: "Your OTP for Admin Receipt",
+      text: `Your OTP for admin receipt for order id : ${groupOrderId} is ${adminOtp}. It will expire in 5 minutes.`,
+    });
+
+    res.status(200).json({ message: "OTP verified successfully. Admin OTP sent.", confirmation: true, data: groupOrder });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to verify OTP", confirmation: false, error });
+  }
+});
+
+// POST /api/orders/:groupOrderId/verify-admin-otp
+router.post("/:groupOrderId/verify-admin-otp", authenticate, async (req, res) => {
+  try {
+    const { groupOrderId } = req.params;
+    const { otp_code } = req.body;
+
+    // Find the OTP in the database
+    const otpRecord = await TrackingOtp.findOne({ groupOrder_id: groupOrderId, otp_code, purpose: "admin_receipt" });
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Invalid OTP", confirmation: false });
+    }
+
+    // Update the group order status
+    const groupOrder = await GroupOrder.findById(groupOrderId);
+    if (!groupOrder) {
+      return res.status(404).json({ message: "GroupOrder not found", confirmation: false });
+    }
+
+    groupOrder.tracking_status = "Order Received By Admin";
+    await groupOrder.save();
+
+    // Delete the OTP after verification
+    await TrackingOtp.deleteOne({ _id: otpRecord._id });
+
+    const rider = await Rider.findById(groupOrder.pickup_rider_id);
+    if (!rider) {
+      return res.status(404).json({ message: "Rider not found", confirmation: false });
+    }
+
+     // Update the rider's availability to false
+     rider.available = true;
+     await rider.save(); 
+
+    res.status(200).json({ message: "OTP verified successfully", confirmation: true, data: groupOrder });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to verify OTP", confirmation: false, error });
+  }
+});
+
+// PATCH /api/orders/:groupOrderId/complete-work
+router.patch("/:groupOrderId/complete-work", authenticate, async (req, res) => {
+  try {
+    const { groupOrderId } = req.params;
+
+    // Validate if the group order exists
+    const groupOrder = await GroupOrder.findById(groupOrderId);
+    if (!groupOrder) {
+      return res.status(404).json({ message: "GroupOrder not found", confirmation: false });
+    }
+
+    // Validate the current tracking status
+    if (groupOrder.tracking_status !== "Order Received By Admin") {
+      let errorMessage = "Work cannot be completed at this stage.";
+      if (groupOrder.tracking_status === "Out For Delivery") {
+        errorMessage = "Work cannot be completed because the order is already out for delivery.";
+      } else if (groupOrder.tracking_status === "Order Completed") {
+        errorMessage = "Work cannot be completed because the order is already completed.";
+      }
+      return res.status(400).json({ message: errorMessage, confirmation: false });
+    }
+
+    // Update the group order status
+    groupOrder.tracking_status = "Work Completed";
+    await groupOrder.save();
+
+    res.status(200).json({ message: "Work completed successfully", confirmation: true, data: groupOrder });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to complete work", confirmation: false, error });
+  }
+});
+
+// POST /api/orders/call-for-pickup
+router.post("/call-for-pickup", authenticate, async (req, res) => {
+  try {
+    const { groupOrderIds } = req.body;
+
+    // Validate if groupOrderIds is provided and is an array
+    if (!groupOrderIds || !Array.isArray(groupOrderIds) || groupOrderIds.length === 0) {
+      return res.status(400).json({ message: "Invalid groupOrderIds", confirmation: false });
+    }
+
+    // Fetch all group orders with the provided IDs
+    const groupOrders = await GroupOrder.find({ _id: { $in: groupOrderIds } });
+
+    // Validate that all group orders exist
+    if (groupOrders.length !== groupOrderIds.length) {
+      return res.status(404).json({ message: "Some group orders not found", confirmation: false });
+    }
+
+    const invalidOrders = groupOrders.filter((order) => order.tracking_status !== "Work Completed");
+    if (invalidOrders.length > 0) {
+      const invalidOrderIds = invalidOrders.map((order) => order._id);
+      return res.status(400).json({
+        message: "Some group orders are not in 'Work Completed' status",
+        confirmation: false,
+        invalidOrderIds,
+      });
+    }
+
+    const commonPickupKey = require("crypto").randomUUID();
+
+    const updateResult = await GroupOrder.updateMany(
+      { _id: { $in: groupOrderIds } },
+      { $set: { common_pickup_key: commonPickupKey } }
+    );
+
+    if (updateResult.modifiedCount === 0) {
+      return res.status(404).json({ message: "No group orders found or updated", confirmation: false });
+    }
+
+    res.status(200).json({
+      message: "Common pickup key assigned successfully",
+      confirmation: true,
+      data: { common_pickup_key: commonPickupKey, groupOrderIds },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to assign common pickup key", confirmation: false, error });
+  }
+});
+
+// POST /api/orders/assign-rider
+router.post("/assign-rider", authenticate, async (req, res) => {
+  try {
+    const { common_pickup_key, delivery_rider_id, rider_name, rider_phone } = req.body;
+
+    // Validate if the common_pickup_key and rider details are provided
+    if (!common_pickup_key || !delivery_rider_id || !rider_name || !rider_phone) {
+      return res.status(400).json({ message: "Invalid input", confirmation: false });
+    }
+
+    const rider = await Rider.findById(pickup_rider_id);
+    if (!rider) {
+      return res.status(404).json({ message: "Rider not found", confirmation: false });
+    }
+
+    // Fetch all group orders with the common_pickup_key
+    const groupOrders = await GroupOrder.find({ common_pickup_key }).populate("userId");
+
+    // Validate that group orders exist
+    if (groupOrders.length === 0) {
+      return res.status(404).json({ message: "No group orders found for the common pickup key", confirmation: false });
+    }
+
+    // Update the GroupOrder documents with the rider details and status
+    const updateResult = await GroupOrder.updateMany(
+      { common_pickup_key },
+      {
+        $set: {
+          delivery_rider_id,
+          delivery_rider_details: { name: rider_name, phone: rider_phone },
+          tracking_status: "Out For Delivery",
+        },
+      }
+    );
+
+    if (updateResult.modifiedCount === 0) {
+      return res.status(404).json({ message: "No group orders found or updated", confirmation: false });
+    }
+
+     // Update the rider's availability to false
+     rider.available = true;
+     await rider.save();
+
+    for (const groupOrder of groupOrders) {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      await TrackingOtp.create({
+        groupOrder_id: groupOrder._id,
+        otp_code: otp,
+        purpose: "delivery",
+        expires_at: new Date(Date.now() + 5 * 60 * 1000),
+      });
+
+      const userEmail = groupOrder.userId.email;
+      await transporter.sendMail({
+        from: `"LenZ" <${process.env.EMAIL_USER}>`,
+        to: userEmail,
+        subject: "Your OTP for Order Delivery",
+        text: `Your OTP for order delivery is ${otp}. It will expire in 5 minutes.`,
+      });
+    }
+
+    res.status(200).json({
+      message: "Rider assigned successfully. OTPs sent to users.",
+      confirmation: true,
+      data: { common_pickup_key, delivery_rider_id, rider_name, rider_phone },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to assign rider", confirmation: false, error });
+  }
+});
+
+// POST /api/orders/:groupOrderId/verify-delivery-otp
+router.post("/:groupOrderId/verify-delivery-otp", authenticate, async (req, res) => {
+  try {
+    const { groupOrderId } = req.params;
+    const { otp_code } = req.body;
+
+    // Find the OTP in the database
+    const otpRecord = await TrackingOtp.findOne({ groupOrder_id: groupOrderId, otp_code, purpose: "delivery" });
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Invalid OTP", confirmation: false });
+    }
+
+    // Update the group order status
+    const groupOrder = await GroupOrder.findById(groupOrderId);
+    if (!groupOrder) {
+      return res.status(404).json({ message: "GroupOrder not found", confirmation: false });
+    }
+
+    groupOrder.tracking_status = "Order Completed";
+    await groupOrder.save();
+
+    // Delete the OTP after verification
+    await OTP.deleteOne({ _id: otpRecord._id });
+
+    res.status(200).json({ message: "OTP verified successfully", confirmation: true, data: groupOrder });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to verify OTP", confirmation: false, error });
   }
 });
 

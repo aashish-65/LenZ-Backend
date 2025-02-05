@@ -31,11 +31,12 @@ router.post("/signup", async (req, res) => {
 
   try {
     // Check if the user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+    const existingUser = await User.findOne({ email });
+
     if (existingUser) {
       return res
         .status(401)
-        .json({ error: "Email or phone number already exists" });
+        .json({ error: "Email already exists" });
     }
 
     // Hash the password
@@ -139,7 +140,7 @@ router.post("/signup", async (req, res) => {
 `;
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"LenZ" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Welcome to LenZ!",
       html: emailTemplate,
@@ -177,11 +178,11 @@ router.post("/signup", async (req, res) => {
 
 // User Login
 router.post("/login", async (req, res) => {
-  const { userId, password } = req.body;
+  const { email, password } = req.body;
 
   try {
     // Check if the user exists
-    const user = await User.findOne({ userId });
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: "User not found" });
     }
