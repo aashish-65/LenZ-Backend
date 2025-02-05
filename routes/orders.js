@@ -9,6 +9,7 @@ const TrackingOtp = require("../models/TrackingOtp");
 const Rider = require("../models/Rider");
 
 const nodemailer = require("nodemailer");
+const { verify } = require("crypto");
 
 const transporter = nodemailer.createTransport({
   service: 'Gmail',
@@ -17,6 +18,26 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASSWORD,
   },
 });
+
+const verifyApiKey = (req, res, next) => {
+  const apiKey = req.headers["lenz-api-key"];
+  console.log(req.headers["lenz-api-key"]);
+  const authorizedApiKey = process.env.AUTHORIZED_API_KEY;
+
+  if (!apiKey) {
+    return res
+      .status(401)
+      .json({ error: "API key is missing.", confirmation: false });
+  }
+
+  if (apiKey === authorizedApiKey) {
+    next();
+  } else {
+    return res
+      .status(403)
+      .json({ error: "Access denied. Invalid API key.", confirmation: false });
+  }
+};
 
 // Route to store order details
 router.post("/place-order", async (req, res) => {
@@ -119,7 +140,7 @@ router.get("/get-all-group-orders", async (req, res) => {
 
 router.get("/get-group-orders", authenticate, async (req, res) => {
   try {
-    const userId = req.user.id; // Assuming authenticate middleware adds user info to req
+    const userId = req.user.id;
     console.log(userId);
     const groupOrders = await GroupOrder.find({ userId }).populate("orders");
     res.status(200).json({ data: groupOrders });
@@ -141,7 +162,7 @@ router.get("/get-group-order/:groupOrderId", async (req, res) => {
 
 
 // PATCH /api/orders/:groupOrderId/accept-pickup
-router.patch("/:groupOrderId/accept-pickup", authenticate, async (req, res) => {
+router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
   try {
     const { groupOrderId } = req.params;
     const { pickup_rider_id, rider_name, rider_phone } = req.body;
@@ -194,7 +215,7 @@ router.patch("/:groupOrderId/accept-pickup", authenticate, async (req, res) => {
 });
 
 // POST /api/orders/:groupOrderId/verify-pickup-otp
-router.post("/:groupOrderId/verify-pickup-otp", authenticate, async (req, res) => {
+router.post("/:groupOrderId/verify-pickup-otp", verifyApiKey, async (req, res) => {
   try {
     const { groupOrderId } = req.params;
     const { otp_code } = req.body;
@@ -241,7 +262,7 @@ router.post("/:groupOrderId/verify-pickup-otp", authenticate, async (req, res) =
 });
 
 // POST /api/orders/:groupOrderId/verify-admin-otp
-router.post("/:groupOrderId/verify-admin-otp", authenticate, async (req, res) => {
+router.post("/:groupOrderId/verify-admin-otp", verifyApiKey, async (req, res) => {
   try {
     const { groupOrderId } = req.params;
     const { otp_code } = req.body;
@@ -280,7 +301,7 @@ router.post("/:groupOrderId/verify-admin-otp", authenticate, async (req, res) =>
 });
 
 // PATCH /api/orders/:groupOrderId/complete-work
-router.patch("/:groupOrderId/complete-work", authenticate, async (req, res) => {
+router.patch("/:groupOrderId/complete-work", verifyApiKey, async (req, res) => {
   try {
     const { groupOrderId } = req.params;
 
@@ -312,7 +333,7 @@ router.patch("/:groupOrderId/complete-work", authenticate, async (req, res) => {
 });
 
 // POST /api/orders/call-for-pickup
-router.post("/call-for-pickup", authenticate, async (req, res) => {
+router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
   try {
     const { groupOrderIds } = req.body;
 
@@ -361,7 +382,7 @@ router.post("/call-for-pickup", authenticate, async (req, res) => {
 });
 
 // POST /api/orders/assign-rider
-router.post("/assign-rider", authenticate, async (req, res) => {
+router.post("/assign-rider", verifyApiKey, async (req, res) => {
   try {
     const { common_pickup_key, delivery_rider_id, rider_name, rider_phone } = req.body;
 
@@ -433,7 +454,7 @@ router.post("/assign-rider", authenticate, async (req, res) => {
 });
 
 // POST /api/orders/:groupOrderId/verify-delivery-otp
-router.post("/:groupOrderId/verify-delivery-otp", authenticate, async (req, res) => {
+router.post("/:groupOrderId/verify-delivery-otp", verifyApiKey, async (req, res) => {
   try {
     const { groupOrderId } = req.params;
     const { otp_code } = req.body;

@@ -145,7 +145,6 @@ router.post("/signup", async (req, res) => {
       subject: "Welcome to LenZ!",
       html: emailTemplate,
     };
-    await transporter.sendMail(mailOptions);
 
     // Create a new user
     const newUser = new User({
@@ -168,6 +167,7 @@ router.post("/signup", async (req, res) => {
     });
 
     await newUser.save();
+    await transporter.sendMail(mailOptions);
 
     res.status(201).json({ message: "Signup successful", userId });
   } catch (error) {
