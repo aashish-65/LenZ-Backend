@@ -30,4 +30,27 @@ router.get("/", verifyApiKey, async (req, res) => {
     }
 });
 
+router.post("/:userId/edit-distance", verifyApiKey, async (req, res) => {
+    const { userId } = req.params;
+    const { newDistance } = req.body;
+
+    try {
+        if (!newDistance) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+        const user = await Shop.findOne({userId});
+        if (!user) {
+            return res.status(404).json({ error: "Shop not found" });
+        }
+
+        user.distance = newDistance;
+        await user.save();
+
+        res.status(200).json({ message: "Distance updated successfully", confirmation: true});
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 module.exports = router;

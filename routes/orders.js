@@ -21,7 +21,6 @@ const transporter = nodemailer.createTransport({
 
 const verifyApiKey = (req, res, next) => {
   const apiKey = req.headers["lenz-api-key"];
-  console.log(req.headers["lenz-api-key"]);
   const authorizedApiKey = process.env.AUTHORIZED_API_KEY;
 
   if (!apiKey) {
@@ -64,6 +63,16 @@ router.post("/place-order", async (req, res) => {
   try {
     const { userId } = req.params;
     const orders = await Order.find({ userId }).populate("userId", "name email phone plan");
+    res.status(200).json({ data: orders });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to retrieve orders", confirmation: false ,error });
+  }
+});
+
+router.get("/order/:orderId", async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const orders = await Order.findById(orderId);
     res.status(200).json({ data: orders });
   } catch (error) {
     res.status(500).json({ message: "Failed to retrieve orders", confirmation: false ,error });
@@ -114,8 +123,8 @@ router.post("/create-group-order", async (req, res) => {
       { $set: { isGroupOrder: true, groupOrderId: savedGroupOrder._id, paymentStatus: savedGroupOrder.paymentStatus } }
     );
 
-    // Notify the admin (you can implement this logic)
-    notifyAdmin(savedGroupOrder);
+    // Notify the admin using Socket.IO
+    notifyAdmin(savedGroupOrder, req.app.get('io'));
 
     res.status(201).json({ message: "Group order created successfully", confirmation: true, data: savedGroupOrder });
   } catch (error) {
@@ -124,9 +133,17 @@ router.post("/create-group-order", async (req, res) => {
 });
 
 // Function to notify the admin (you can implement this logic)
-const notifyAdmin = (groupOrder) => {
+const notifyAdmin = (groupOrder, io) => {
   console.log(`Notification: A new group order has been created with ID ${groupOrder._id}`);
-  // You can integrate with a notification service (e.g., email, SMS, or WebSocket)
+
+  // Emit a real-time event to the admin
+  io.to('adminRoom').emit('newGroupOrder', {
+    message: 'A new group order has been created!',
+    groupOrderId: groupOrder._id,
+    userId: groupOrder.userId,
+    totalAmount: groupOrder.totalAmount,
+    paymentStatus: groupOrder.paymentStatus,
+  });
 };
 
 router.get("/get-all-group-orders", verifyApiKey, async (req, res) => {

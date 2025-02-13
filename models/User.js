@@ -19,6 +19,7 @@ const userSchema = new mongoose.Schema(
       state: { type: String, required: true },
       pinCode: { type: String, required: true },
     },
+    distance: { type: Number },
   },
   { timestamps: true }
 );
