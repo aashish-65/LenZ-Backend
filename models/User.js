@@ -19,7 +19,8 @@ const userSchema = new mongoose.Schema(
       state: { type: String, required: true },
       pinCode: { type: String, required: true },
     },
-    distance: { type: Number },
+    distance: { type: Number, default: 0 },
+    creditAmt: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

@@ -79,6 +79,17 @@ router.get("/order/:orderId", async (req, res) => {
   }
 });
 
+//delete order
+router.delete("/delete-order/:orderId", authenticate, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    await Order.findByIdAndDelete(orderId);
+    res.status(200).json({ message: "Order deleted successfully", confirmation: true });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete order", confirmation: false ,error });
+  }
+});
+
 // Route to create a group order
 router.post("/create-group-order", async (req, res) => {
   try {

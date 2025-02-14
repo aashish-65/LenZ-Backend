@@ -30,7 +30,7 @@ router.get("/", verifyApiKey, async (req, res) => {
     }
 });
 
-router.post("/:userId/edit-distance", verifyApiKey, async (req, res) => {
+router.put("/:userId/edit-distance", verifyApiKey, async (req, res) => {
     const { userId } = req.params;
     const { newDistance } = req.body;
 
@@ -47,6 +47,30 @@ router.post("/:userId/edit-distance", verifyApiKey, async (req, res) => {
         await user.save();
 
         res.status(200).json({ message: "Distance updated successfully", confirmation: true});
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// update credit balance
+router.put("/:userId/edit-credit-bal", verifyApiKey, async (req, res) => {
+    const { userId } = req.params;
+    const { newCreditAmt } = req.body;
+
+    try {
+        if (!newCreditAmt) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+        const user = await Shop.findOne({userId});
+        if (!user) {
+            return res.status(404).json({ error: "Shop not found" });
+        }
+
+        user.creditAmt = newCreditAmt;
+        await user.save();
+
+        res.status(200).json({ message: "Credit Amount updated successfully", confirmation: true});
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Server error" });
