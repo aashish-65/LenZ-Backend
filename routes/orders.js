@@ -134,6 +134,10 @@ router.post("/create-group-order", async (req, res) => {
       { $set: { isGroupOrder: true, groupOrderId: savedGroupOrder._id, paymentStatus: savedGroupOrder.paymentStatus } }
     );
 
+    // Update Credit Balance
+    user.creditBalance = user.creditBalance + savedGroupOrder.leftAmount;
+    await user.save();
+
     // Notify the admin using Socket.IO
     notifyAdmin(savedGroupOrder, req.app.get('io'));
 

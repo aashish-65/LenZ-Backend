@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
       pinCode: { type: String, required: true },
     },
     distance: { type: Number, default: 0 },
-    creditAmt: { type: Number, default: 0 },
+    creditBalance: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
