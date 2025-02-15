@@ -67,7 +67,7 @@ router.put("/:userId/edit-credit-bal", verifyApiKey, async (req, res) => {
             return res.status(404).json({ error: "Shop not found" });
         }
 
-        user.creditAmt = newCreditAmt;
+        user.creditBalance = newCreditAmt;
         await user.save();
 
         res.status(200).json({ message: "Credit Amount updated successfully", confirmation: true});
