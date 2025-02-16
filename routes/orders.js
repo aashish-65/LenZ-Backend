@@ -396,7 +396,7 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
 
     const updateResult = await GroupOrder.updateMany(
       { _id: { $in: groupOrderIds } },
-      { $set: { common_pickup_key: commonPickupKey } }
+      { $set: { common_pickup_key: commonPickupKey, tracking_status: "Internal Tracking" } }
     );
 
     if (updateResult.modifiedCount === 0) {
