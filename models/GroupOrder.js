@@ -45,6 +45,7 @@ const groupOrderSchema = new mongoose.Schema(
       phone: { type: String, default: null },
     },
     common_pickup_key: { type: String, default: null },
+    delAmount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

@@ -367,7 +367,7 @@ router.patch("/:groupOrderId/complete-work", verifyApiKey, async (req, res) => {
 // POST /api/orders/call-for-pickup
 router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
   try {
-    const { groupOrderIds } = req.body;
+    const { groupOrderIds, delAmount } = req.body;
 
     // Validate if groupOrderIds is provided and is an array
     if (!groupOrderIds || !Array.isArray(groupOrderIds) || groupOrderIds.length === 0) {
@@ -396,7 +396,7 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
 
     const updateResult = await GroupOrder.updateMany(
       { _id: { $in: groupOrderIds } },
-      { $set: { common_pickup_key: commonPickupKey, tracking_status: "Internal Tracking" } }
+      { $set: { common_pickup_key: commonPickupKey, tracking_status: "Internal Tracking", delAmount } }
     );
 
     if (updateResult.modifiedCount === 0) {
