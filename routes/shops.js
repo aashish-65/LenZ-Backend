@@ -59,9 +59,6 @@ router.put("/:userId/edit-credit-bal", verifyApiKey, async (req, res) => {
     const { newCreditAmt } = req.body;
 
     try {
-        if (!newCreditAmt) {
-            return res.status(400).json({ error: "Missing required fields" });
-        }
         const user = await Shop.findOne({userId});
         if (!user) {
             return res.status(404).json({ error: "Shop not found" });
