@@ -32,7 +32,7 @@ router.post("/login", verifyApiKey, async (req, res) => {
     if (!admin) {
       return res
         .status(401)
-        .json({ error: "Admin Not Found", confirmation: false });
+        .json({ message: "Admin Not Found", confirmation: false });
     }
 
     // Check the password
@@ -40,7 +40,7 @@ router.post("/login", verifyApiKey, async (req, res) => {
     if (!isMatch) {
       return res
         .status(401)
-        .json({ error: "Invalid Password", confirmation: false });
+        .json({ message: "Invalid Password", confirmation: false });
     }
 
     // Generate JWT
