@@ -50,7 +50,7 @@ router.post("/login", verifyApiKey, async (req, res) => {
 
     res.json({ message: "Login successful", confirmation: true, token, admin });
   } catch (error) {
-    res.status(500).json({ error: "Server error during login" });
+    res.status(500).json({ message: "Server error during login" });
   }
 });
 
@@ -72,7 +72,7 @@ const generateUniqueAdminId = async () => {
 
 // Signup route
 router.post("/signup", verifyApiKey, async (req, res) => {
-  const { name, email, phone, password } = req.body;
+  const { name, email, phone, password, address } = req.body;
 
   try {
     // Check if the admin already exists
@@ -81,6 +81,11 @@ router.post("/signup", verifyApiKey, async (req, res) => {
       return res
         .status(401)
         .json({ error: "Admin with this email or phone already exists" , confirmation: false});
+    }
+
+    // Validate address fields
+    if (!address || !address.line1 || !address.city || !address.state || !address.pinCode) {
+      return res.status(400).json({ error: "Address fields are incomplete", confirmation: false });
     }
 
     // Generate a unique adminId
@@ -97,6 +102,14 @@ router.post("/signup", verifyApiKey, async (req, res) => {
       phone,
       password: hashedPassword,
       adminId,
+      address: {
+        line1: address.line1,
+        line2: address.line2 || "",
+        landmark: address.landmark || "",
+        city: address.city,
+        state: address.state,
+        pinCode: address.pinCode,
+      },
     });
     await admin.save();
 
