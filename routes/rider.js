@@ -1,7 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const Rider = require("../models/Rider");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 
@@ -16,24 +15,35 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Middleware to verify API Key
+const verifyApiKey = (req, res, next) => {
+  const apiKey = req.headers["lenz-api-key"];
+  const authorizedApiKey = process.env.AUTHORIZED_API_KEY;
+
+  if (!apiKey) {
+    return res
+      .status(401)
+      .json({ error: "API key is missing.", confirmation: false });
+  }
+
+  if (apiKey === authorizedApiKey) {
+    next();
+  } else {
+    return res
+      .status(403)
+      .json({ error: "Access denied. Invalid API key.", confirmation: false });
+  }
+};
+
 // User Signup
-router.post("/signup", async (req, res) => {
-  const {
-    name,
-    email,
-    phone,
-    password,
-    plan,
-    shopName,
-    alternatePhone,
-    address,
-  } = req.body;
+router.post("/signup", verifyApiKey, async (req, res) => {
+  const { name, email, phone, password, vehicleNumber } = req.body;
 
   try {
     // Check if the user already exists
-    const existingUser = await User.findOne({ email });
+    const existingRider = await Rider.findOne({ email });
 
-    if (existingUser) {
+    if (existingRider) {
       return res.status(401).json({ error: "Email already exists" });
     }
 
@@ -41,26 +51,15 @@ router.post("/signup", async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    let userId;
+    let riderId;
     let isUnique = false;
     // Generate a unique 10-digit ID
     while (!isUnique) {
-      userId = Math.floor(100000 + Math.random() * 900000);
-      const existingUser = await User.findOne({ userId });
-      if (!existingUser) {
+      riderId = Math.floor(100000 + Math.random() * 900000);
+      const existingRider = await User.findOne({ riderId });
+      if (!existingRider) {
         isUnique = true;
       }
-    }
-
-    // Validate the address
-    if (
-      !address ||
-      !address.line1 ||
-      !address.city ||
-      !address.state ||
-      !address.pinCode
-    ) {
-      return res.status(400).json({ error: "Incomplete address details" });
     }
 
     const emailTemplate = `
@@ -83,11 +82,11 @@ router.post("/signup", async (req, res) => {
           Thank you for signing up with <strong>LenZ</strong>. We are thrilled to have you onboard! Below are your account details for quick reference:
         </p>
 
-        <!-- User Details -->
+        <!-- Rider Details -->
         <table style="width: 100%; background-color: #f8f9fa; border-radius: 8px; padding: 15px; border: 1px solid #e3e6ea; margin: 20px 0;">
           <tr>
-            <td style="font-size: 14px; padding: 8px 0;"><strong>User ID:</strong></td>
-            <td style="font-size: 14px; padding: 8px 0;">${userId}</td>
+            <td style="font-size: 14px; padding: 8px 0;"><strong>Rider ID:</strong></td>
+            <td style="font-size: 14px; padding: 8px 0;">${riderId}</td>
           </tr>
           <tr>
             <td style="font-size: 14px; padding: 8px 0;"><strong>Email:</strong></td>
@@ -98,17 +97,13 @@ router.post("/signup", async (req, res) => {
             <td style="font-size: 14px; padding: 8px 0;">${phone}</td>
           </tr>
           <tr>
-            <td style="font-size: 14px; padding: 8px 0;"><strong>Plan:</strong></td>
-            <td style="font-size: 14px; padding: 8px 0;">${plan}</td>
-          </tr>
-          <tr>
-            <td style="font-size: 14px; padding: 8px 0;"><strong>Shop Name:</strong></td>
-            <td style="font-size: 14px; padding: 8px 0;">${shopName}</td>
+            <td style="font-size: 14px; padding: 8px 0;"><strong>Vehicle Number:</strong></td>
+            <td style="font-size: 14px; padding: 8px 0;">${vehicleNumber}</td>
           </tr>
         </table>
 
         <p style="font-size: 16px; line-height: 1.6; margin: 0;">
-          You can now log in to your account to manage your subscription, create orders, and explore our features.
+          You can now log in to your account to manage the orders, payments, and explore our features.
         </p>
       </td>
     </tr>
@@ -145,89 +140,126 @@ router.post("/signup", async (req, res) => {
     };
 
     // Create a new user
-    const newUser = new User({
-      userId,
+    const newRider = new Rider({
+      riderId,
       name,
       email,
       phone,
-      alternatePhone,
-      shopName,
+      vehicleNumber,
       password: hashedPassword,
-      plan,
-      address: {
-        line1: address.line1,
-        line2: address.line2 || "",
-        landmark: address.landmark || "",
-        city: address.city,
-        state: address.state,
-        pinCode: address.pinCode,
-      },
     });
 
-    await newUser.save();
+    await newRider.save();
     await transporter.sendMail(mailOptions);
 
-    res.status(201).json({ message: "Signup successful", userId });
+    res.status(201).json({ message: "Signup successful", newRider });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error during signup" });
   }
 });
 
-// User Login
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+router.post("/login", verifyApiKey, async (req, res) => {
+  const { riderId, password } = req.body;
 
   try {
-    // Check if the user exists
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ error: "User not found" });
+    // Check if the rider exists
+    const rider = await Rider.findOne({ riderId });
+    if (!rider) {
+      return res
+        .status(401)
+        .json({ message: "Rider Not Found", confirmation: false });
     }
 
     // Check the password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, rider.password);
     if (!isMatch) {
-      return res.status(401).json({ error: "Invalid password" });
+      return res
+        .status(401)
+        .json({ message: "Invalid Password", confirmation: false });
     }
 
-    // Generate JWT
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
-
-    res.json({ message: "Login successful", token, user });
+    res.json({ message: "Login Successful", confirmation: true });
   } catch (error) {
-    res.status(500).json({ error: "Server error during login" });
+    res.status(500).json({ message: "Server error during login" });
   }
 });
 
-// Verify Token
-router.get("/verify", async (req, res) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res
-      .status(401)
-      .json({ error: "Authorization token missing or malformed" });
+router.get("/", verifyApiKey, async (req, res) => {
+  try {
+    const riders = await Rider.find();
+    res.status(200).json(riders);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
   }
+});
 
-  const token = authHeader.split(" ")[1];
+router.put("/:riderId", verifyApiKey, async (req, res) => {
+  const { riderId } = req.params;
 
   try {
-    // Verify the token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Fetch the user
-    const user = await User.findById(decoded.id).select("-password");
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    const rider = await Rider.findOne({ riderId });
+    if (!rider) {
+      return res.status(404).json({ error: "Rider not found" });
     }
 
-    res.json({ user });
+    res.status(200).json(rider);
   } catch (error) {
-    console.error("Error verifying token:", error);
-    res.status(401).json({ error: "Invalid or expired token" });
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.put("/:riderId/edit-working-status", verifyApiKey, async (req, res) => {
+  const { riderId } = req.params;
+  const { newStatus } = req.body;
+
+  try {
+    if (!newStatus) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const rider = await Rider.findOne({ riderId });
+    if (!rider) {
+      return res.status(404).json({ error: "Rider not found" });
+    }
+
+    rider.isWorking = newStatus;
+    await rider.save();
+
+    res.status(200).json({
+      message: "Working Status updated successfully",
+      confirmation: true,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.put("/:riderId/edit-phone-number", verifyApiKey, async (req, res) => {
+  const { riderId } = req.params;
+  const { newPhoneNumber } = req.body;
+
+  try {
+    if (!newPhoneNumber) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const rider = await Rider.findOne({ riderId });
+    if (!rider) {
+      return res.status(404).json({ error: "Rider not found" });
+    }
+
+    rider.phone = newPhoneNumber;
+    await rider.save();
+
+    res.status(200).json({
+      message: "Mobile Number updated successfully",
+      confirmation: true,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
   }
 });
 

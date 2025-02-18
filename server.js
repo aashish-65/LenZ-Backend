@@ -14,6 +14,7 @@ const orderRoutes = require("./routes/orders");
 const profileRoutes = require("./routes/profile");
 const otpRoutes = require("./routes/otp");
 const paymentRoutes = require("./routes/payment");
+const riderRoutes = require("./routes/rider");
 
 dotenv.config();
 const app = express();
@@ -50,6 +51,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/riders", riderRoutes);
 
 // Socket.IO Connection
 io.on("connection", (socket) => {

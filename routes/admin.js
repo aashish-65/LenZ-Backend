@@ -13,13 +13,17 @@ const verifyApiKey = (req, res, next) => {
   const authorizedApiKey = process.env.AUTHORIZED_API_KEY;
 
   if (!apiKey) {
-      return res.status(401).json({ error: "API key is missing.", confirmation: false });
+    return res
+      .status(401)
+      .json({ error: "API key is missing.", confirmation: false });
   }
 
   if (apiKey === authorizedApiKey) {
-      next();
+    next();
   } else {
-      return res.status(403).json({ error: "Access denied. Invalid API key.", confirmation: false });
+    return res
+      .status(403)
+      .json({ error: "Access denied. Invalid API key.", confirmation: false });
   }
 };
 
@@ -80,12 +84,23 @@ router.post("/signup", verifyApiKey, async (req, res) => {
     if (existingAdmin) {
       return res
         .status(401)
-        .json({ error: "Admin with this email or phone already exists" , confirmation: false});
+        .json({
+          error: "Admin with this email or phone already exists",
+          confirmation: false,
+        });
     }
 
     // Validate address fields
-    if (!address || !address.line1 || !address.city || !address.state || !address.pinCode) {
-      return res.status(400).json({ error: "Address fields are incomplete", confirmation: false });
+    if (
+      !address ||
+      !address.line1 ||
+      !address.city ||
+      !address.state ||
+      !address.pinCode
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Address fields are incomplete", confirmation: false });
     }
 
     // Generate a unique adminId

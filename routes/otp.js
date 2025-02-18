@@ -80,7 +80,9 @@ router.post("/verify-otp", verifyApiKey, async (req, res) => {
     // If OTP exists, delete it to prevent reuse
     await OTP.deleteOne({ _id: record._id });
 
-    res.status(200).json({ message: "OTP verified successfully.", confirmation: true });
+    res
+      .status(200)
+      .json({ message: "OTP verified successfully.", confirmation: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to verify OTP." });

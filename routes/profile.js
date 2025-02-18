@@ -24,14 +24,7 @@ router.get("/", authenticate, async (req, res) => {
 // @desc    Update user profile
 // @access  Private
 router.put("/", authenticate, async (req, res) => {
-  const {
-    name,
-    phone,
-    alternatePhone,
-    shopName,
-    address,
-    plan,
-  } = req.body;
+  const { name, phone, alternatePhone, shopName, address, plan } = req.body;
 
   try {
     const updatedUser = await User.findByIdAndUpdate(

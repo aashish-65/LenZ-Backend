@@ -1,7 +1,7 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const testSchema = new mongoose.Schema({
-    notification: { type: Boolean },
+  notification: { type: Boolean },
 });
 
-module.exports = mongoose.model('Test', testSchema);
+module.exports = mongoose.model("Test", testSchema);
