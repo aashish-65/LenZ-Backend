@@ -56,7 +56,7 @@ router.post("/signup", verifyApiKey, async (req, res) => {
     // Generate a unique 10-digit ID
     while (!isUnique) {
       riderId = Math.floor(100000 + Math.random() * 900000);
-      const existingRider = await User.findOne({ riderId });
+      const existingRider = await Rider.findOne({ riderId });
       if (!existingRider) {
         isUnique = true;
       }
