@@ -1,7 +1,9 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const Rider = require("../models/Rider");
 const nodemailer = require("nodemailer");
+const RiderOrderHistory = require("../models/RiderOrderHistory");
 require("dotenv").config();
 
 const router = express.Router();
@@ -260,6 +262,33 @@ router.put("/:riderId/edit-phone-number", verifyApiKey, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// API to get orders by rider_id
+router.get("/order-history/:riderId", async (req, res) => {
+  try {
+    const { riderId } = req.params;
+
+    // Validate riderId
+    if (!mongoose.Types.ObjectId.isValid(riderId)) {
+      return res.status(400).json({ message: "Invalid rider ID" });
+    }
+
+    // Find orders for the given rider_id
+    const orders = await RiderOrderHistory.find({ rider_id: riderId });
+
+    if (orders.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No orders found for this rider" });
+    }
+
+    // Respond with the filtered orders
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error("Error fetching rider orders:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
