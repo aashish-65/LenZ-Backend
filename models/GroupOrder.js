@@ -17,8 +17,7 @@ const groupOrderSchema = new mongoose.Schema(
       type: String,
       enum: ["unpaid", "pending", "completed"],
       default: "unpaid",
-    }, // Payment status
-
+    },
     tracking_status: {
       type: String,
       enum: [

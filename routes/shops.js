@@ -47,7 +47,17 @@ router.put("/:userId/edit-distance", verifyApiKey, async (req, res) => {
       return res.status(404).json({ error: "Shop not found" });
     }
 
+    let delCharge = 0;
+    if(newDistance > 0 && newDistance <= 5){
+      delCharge = 100;
+    }else if(newDistance > 5 && newDistance <= 7){
+      delCharge = 125;
+    }else if(newDistance > 7 && newDistance <= 9){
+      delCharge = 150;
+    }
+
     user.distance = newDistance;
+    user.deliveryCharge = delCharge;
     await user.save();
 
     res
