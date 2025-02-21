@@ -162,11 +162,12 @@ router.post("/signup", verifyApiKey, async (req, res) => {
 });
 
 router.post("/login", verifyApiKey, async (req, res) => {
-  const { riderId, password } = req.body;
+  const { riderEmail, password } = req.body;
 
   try {
     // Check if the rider exists
-    const rider = await Rider.findOne({ riderId });
+    const email = riderEmail;
+    const rider = await Rider.findOne({ email });
     if (!rider) {
       return res
         .status(401)
@@ -183,7 +184,7 @@ router.post("/login", verifyApiKey, async (req, res) => {
 
     res.json({ message: "Login Successful", confirmation: true });
   } catch (error) {
-    res.status(500).json({ message: "Server error during login" });
+    res.status(500).json({ message: "Server error during login", confirmation: false });
   }
 });
 
