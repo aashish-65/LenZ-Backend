@@ -166,6 +166,9 @@ router.post("/login", verifyApiKey, async (req, res) => {
 
   try {
     // Check if the rider exists
+    if (typeof riderEmail !== "string" || typeof password !== "string") {
+      return res.status(400).json({ message: "Enter String Value!", confirmation: false });
+    }
     const email = riderEmail;
     const rider = await Rider.findOne({ email });
     if (!rider) {
