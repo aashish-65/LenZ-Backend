@@ -226,6 +226,9 @@ router.put("/:riderId/edit-working-status", verifyApiKey, async (req, res) => {
       return res.status(404).json({ error: "Rider not found" });
     }
 
+    if (rider.isAvailable === false)
+      return res.status(400).json({ error: "Rider is not available" });
+
     rider.isWorking = newStatus;
     await rider.save();
 
