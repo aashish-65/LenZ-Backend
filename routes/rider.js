@@ -218,7 +218,7 @@ router.put("/:riderId/edit-working-status", verifyApiKey, async (req, res) => {
   const { newStatus } = req.body;
 
   try {
-    if (!newStatus) {
+    if (newStatus != true && newStatus != false) {
       return res.status(400).json({ error: "Missing required fields" });
     }
     const rider = await Rider.findOne({ riderId });

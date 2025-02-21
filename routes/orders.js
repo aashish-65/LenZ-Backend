@@ -146,7 +146,7 @@ router.post("/create-group-order", async (req, res) => {
       (sum, order) => sum + order.totalAmount,
       0
     );
-    const deliveryCharge = 100; // Fixed delivery charge
+    const deliveryCharge = user.deliveryCharge;
     const finalAmount = totalAmount + deliveryCharge;
     const paidAmount =
       paymentOption === "full" ? totalAmount + deliveryCharge : deliveryCharge;
@@ -507,30 +507,6 @@ router.patch("/:groupOrderId/complete-work", verifyApiKey, async (req, res) => {
     res
       .status(500)
       .json({ message: "Failed to complete work", confirmation: false, error });
-  }
-});
-
-router.post("/check", async (req, res) => {
-  try {
-    const { common_pickup_key } = req.body;
-    // const groupOrders = await GroupOrder.find({ _id: { $in: groupOrderIds } });
-    // Validate that all group orders exist
-
-    const groupOrders = await GroupOrder.find({ common_pickup_key }).populate(
-      "userId"
-    );
-    // if (groupOrders.length !== groupOrderIds.length) {
-    //   return res.status(404).json({ message: "Some group orders not found", confirmation: false });
-    // }
-    res.status(200).json(groupOrders);
-  } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Failed to assign common pickup key",
-        confirmation: false,
-        error,
-      });
   }
 });
 

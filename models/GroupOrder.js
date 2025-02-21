@@ -9,7 +9,7 @@ const groupOrderSchema = new mongoose.Schema(
     }, // User who created the group order
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }], // Array of orders in the group
     totalAmount: { type: Number, required: true }, // Total amount of selected orders
-    deliveryCharge: { type: Number, default: 100 }, // Delivery charge
+    deliveryCharge: { type: Number, default: 0 }, // Delivery charge
     finalAmount: { type: Number, required: true }, // Total amount + delivery charge
     paidAmount: { type: Number, default: 0, required: true }, // Amount paid
     leftAmount: { type: Number, default: 0, required: true }, // Remaining amount
