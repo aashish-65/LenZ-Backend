@@ -185,7 +185,7 @@ router.post("/login", verifyApiKey, async (req, res) => {
         .json({ message: "Invalid Password", confirmation: false });
     }
 
-    res.json({ message: "Login Successful", confirmation: true });
+    res.json({ message: "Login Successful", riderId: rider.riderId ,confirmation: true });
   } catch (error) {
     res.status(500).json({ message: "Server error during login", confirmation: false });
   }
