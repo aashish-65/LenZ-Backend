@@ -56,13 +56,11 @@ router.post("/place-order", async (req, res) => {
     const newOrder = new Order({ userId, ...orderDetails });
     const savedOrder = await newOrder.save();
 
-    res
-      .status(201)
-      .json({
-        message: "Order placed successfully",
-        confirmation: true,
-        data: savedOrder,
-      });
+    res.status(201).json({
+      message: "Order placed successfully",
+      confirmation: true,
+      data: savedOrder,
+    });
   } catch (error) {
     res
       .status(500)
@@ -79,13 +77,11 @@ router.get("/get-order/:userId", async (req, res) => {
     );
     res.status(200).json({ data: orders });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Failed to retrieve orders",
-        confirmation: false,
-        error,
-      });
+    res.status(500).json({
+      message: "Failed to retrieve orders",
+      confirmation: false,
+      error,
+    });
   }
 });
 
@@ -95,13 +91,11 @@ router.get("/order/:orderId", async (req, res) => {
     const orders = await Order.findById(orderId);
     res.status(200).json({ data: orders });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Failed to retrieve orders",
-        confirmation: false,
-        error,
-      });
+    res.status(500).json({
+      message: "Failed to retrieve orders",
+      confirmation: false,
+      error,
+    });
   }
 });
 
@@ -152,6 +146,11 @@ router.post("/create-group-order", async (req, res) => {
       paymentOption === "full" ? totalAmount + deliveryCharge : deliveryCharge;
     const leftAmount = paymentOption === "full" ? 0 : totalAmount;
 
+    const shopPickupKey = require("crypto").randomUUID();
+
+    // Calculate pickup amount
+    pickupAmount = 0.4 * deliveryCharge;
+
     // Create the group order
     const newGroupOrder = new GroupOrder({
       userId,
@@ -163,6 +162,8 @@ router.post("/create-group-order", async (req, res) => {
       leftAmount,
       paymentStatus: paymentOption === "full" ? "completed" : "pending",
       tracking_status: "Order Placed For Pickup",
+      shop_pickup_key: shopPickupKey,
+      pickupAmount,
     });
     const savedGroupOrder = await newGroupOrder.save();
 
@@ -185,21 +186,17 @@ router.post("/create-group-order", async (req, res) => {
     // Notify the admin using Socket.IO
     notifyAdmin(savedGroupOrder, req.app.get("io"));
 
-    res
-      .status(201)
-      .json({
-        message: "Group order created successfully",
-        confirmation: true,
-        data: savedGroupOrder,
-      });
+    res.status(201).json({
+      message: "Group order created successfully",
+      confirmation: true,
+      data: savedGroupOrder,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Failed to create group order",
-        confirmation: false,
-        error,
-      });
+    res.status(500).json({
+      message: "Failed to create group order",
+      confirmation: false,
+      error,
+    });
   }
 });
 
@@ -258,8 +255,7 @@ router.get("/get-group-order/:groupOrderId", async (req, res) => {
 router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
   try {
     const { groupOrderId } = req.params;
-    const { pickup_rider_id, rider_name, rider_phone, pickup_amount } =
-      req.body;
+    const { pickup_rider_id, rider_name, rider_phone } = req.body;
 
     // Validate if the group order exists
     const groupOrder = await GroupOrder.findById(groupOrderId).populate(
@@ -283,14 +279,10 @@ router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
     rider.isAvailable = false;
     await rider.save();
 
-    const shopPickupKey = require("crypto").randomUUID();
-
     // Update the group order with rider details and change status
     groupOrder.tracking_status = "Pickup Accepted";
     groupOrder.pickup_rider_id = pickup_rider_id;
     groupOrder.pickup_rider_details = { name: rider_name, phone: rider_phone };
-    groupOrder.shop_pickup_key = shopPickupKey;
-    groupOrder.pickupAmount = pickup_amount;
     await groupOrder.save();
 
     // Generate a 6-digit OTP
@@ -303,14 +295,6 @@ router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
       purpose: "pickup",
     });
 
-    // Create the Pickup Order to the database
-    await RiderOrderHistory.create({
-      rider_id: pickup_rider_id,
-      delivery_type: "pickup",
-      order_key: shopPickupKey,
-      paymentAmount: pickup_amount,
-    });
-
     // Send the OTP to the user's email
     const userEmail = groupOrder.userId.email; // Get the user's email
     await transporter.sendMail({
@@ -320,13 +304,11 @@ router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
       text: `Your OTP for order pickup is ${otp}. It will expire in 5 minutes.`,
     });
 
-    res
-      .status(200)
-      .json({
-        message: "Pickup accepted successfully. OTP sent to your email.",
-        confirmation: true,
-        data: groupOrder,
-      });
+    res.status(200).json({
+      message: "Pickup accepted successfully. OTP sent to your email.",
+      confirmation: true,
+      data: groupOrder,
+    });
   } catch (error) {
     res
       .status(500)
@@ -388,13 +370,11 @@ router.post(
         text: `Your OTP for admin receipt for order id : ${groupOrderId} is ${adminOtp}. It will expire in 5 minutes.`,
       });
 
-      res
-        .status(200)
-        .json({
-          message: "OTP verified successfully. Admin OTP sent.",
-          confirmation: true,
-          data: groupOrder,
-        });
+      res.status(200).json({
+        message: "OTP verified successfully. Admin OTP sent.",
+        confirmation: true,
+        data: groupOrder,
+      });
     } catch (error) {
       res
         .status(500)
@@ -449,13 +429,19 @@ router.post(
       rider.isAvailable = true;
       await rider.save();
 
-      res
-        .status(200)
-        .json({
-          message: "OTP verified successfully",
-          confirmation: true,
-          data: groupOrder,
-        });
+      // Create the Pickup Order to the database
+      await RiderOrderHistory.create({
+        rider_id: groupOrder.pickup_rider_id,
+        delivery_type: "pickup",
+        order_key: groupOrder.shop_pickup_key,
+        paymentAmount: groupOrder.pickupAmount,
+      });
+
+      res.status(200).json({
+        message: "OTP verified successfully",
+        confirmation: true,
+        data: groupOrder,
+      });
     } catch (error) {
       res
         .status(500)
@@ -496,13 +482,11 @@ router.patch("/:groupOrderId/complete-work", verifyApiKey, async (req, res) => {
     groupOrder.tracking_status = "Work Completed";
     await groupOrder.save();
 
-    res
-      .status(200)
-      .json({
-        message: "Work completed successfully",
-        confirmation: true,
-        data: groupOrder,
-      });
+    res.status(200).json({
+      message: "Work completed successfully",
+      confirmation: true,
+      data: groupOrder,
+    });
   } catch (error) {
     res
       .status(500)
@@ -562,12 +546,10 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
     );
 
     if (updateResult.modifiedCount === 0) {
-      return res
-        .status(404)
-        .json({
-          message: "No group orders found or updated",
-          confirmation: false,
-        });
+      return res.status(404).json({
+        message: "No group orders found or updated",
+        confirmation: false,
+      });
     }
 
     res.status(200).json({
@@ -576,13 +558,11 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
       data: { common_pickup_key: commonPickupKey, groupOrderIds },
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Failed to assign common pickup key",
-        confirmation: false,
-        error,
-      });
+    res.status(500).json({
+      message: "Failed to assign common pickup key",
+      confirmation: false,
+      error,
+    });
   }
 });
 
@@ -618,12 +598,10 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
 
     // Validate that group orders exist
     if (groupOrders.length === 0) {
-      return res
-        .status(404)
-        .json({
-          message: "No group orders found for the common pickup key",
-          confirmation: false,
-        });
+      return res.status(404).json({
+        message: "No group orders found for the common pickup key",
+        confirmation: false,
+      });
     }
 
     // Update the GroupOrder documents with the rider details and status
@@ -639,12 +617,10 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
     );
 
     if (updateResult.modifiedCount === 0) {
-      return res
-        .status(404)
-        .json({
-          message: "No group orders found or updated",
-          confirmation: false,
-        });
+      return res.status(404).json({
+        message: "No group orders found or updated",
+        confirmation: false,
+      });
     }
 
     // Update the rider's availability to false
@@ -669,14 +645,6 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
         text: `Your OTP for order delivery is ${otp}. It will expire in 5 minutes.`,
       });
     }
-
-    // Create the Delivery Order History to the database
-    await RiderOrderHistory.create({
-      rider_id: delivery_rider_id,
-      delivery_type: "delivery",
-      order_key: common_pickup_key,
-      paymentAmount: groupOrders[0].delAmount,
-    });
 
     res.status(200).json({
       message: "Rider assigned successfully. OTPs sent to users.",
@@ -736,13 +704,31 @@ router.post(
       // Delete the OTP after verification
       await OTP.deleteOne({ _id: otpRecord._id });
 
-      res
-        .status(200)
-        .json({
-          message: "OTP verified successfully",
-          confirmation: true,
-          data: groupOrder,
+      // Check if all group orders with the same common_pickup_key are completed
+      const commonPickupKey = groupOrder.common_pickup_key;
+      const allGroupOrders = await GroupOrder.find({
+        common_pickup_key: commonPickupKey,
+      });
+
+      const allCompleted = allGroupOrders.every(
+        (order) => order.tracking_status === "Order Completed"
+      );
+
+      if (allCompleted) {
+        // Create the Delivery Order History to the database
+        await RiderOrderHistory.create({
+          rider_id: groupOrder.delivery_rider_id,
+          delivery_type: "delivery",
+          order_key: groupOrder.common_pickup_key,
+          paymentAmount: groupOrder.delAmount,
         });
+      }
+
+      res.status(200).json({
+        message: "OTP verified successfully",
+        confirmation: true,
+        data: groupOrder,
+      });
     } catch (error) {
       res
         .status(500)
