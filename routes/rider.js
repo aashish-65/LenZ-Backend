@@ -201,7 +201,7 @@ router.get("/", verifyApiKey, async (req, res) => {
   }
 });
 
-router.get("/:riderId", verifyApiKey, async (req, res) => {
+router.get("/:riderId/details", verifyApiKey, async (req, res) => {
   const { riderId } = req.params;
 
   try {
@@ -269,6 +269,26 @@ router.put("/:riderId/edit-phone-number", verifyApiKey, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// API to get all orders
+router.get("/order-history", async (req, res) => {
+  try {
+
+    // Find orders for the given rider_id
+    const orders = await RiderOrderHistory.find();
+
+    if (orders.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No orders found" });
+    }
+    // Respond with the filtered orders
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error("Error fetching rider orders:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
