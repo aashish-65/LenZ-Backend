@@ -15,6 +15,7 @@ const adminSchema = new mongoose.Schema(
     },
     password: { type: String, required: true },
     adminId: { type: Number, required: true, unique: true },
+    authToken: { type: String, default: null },
   },
   { timestamps: true }
 );

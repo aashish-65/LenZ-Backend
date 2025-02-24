@@ -5,10 +5,10 @@ const otpSchema = new mongoose.Schema({
   otp_code: { type: String, required: true },
   purpose: {
     type: String,
-    enum: ["pickup", "admin_receipt", "delivery"],
+    enum: ["shop_pickup", "admin_delivery", "admin_pickup","shop_delivery"],
     required: true,
   },
-  createdAt: { type: Date, default: Date.now, expires: 1800 },
+  createdAt: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model("TRACKINGOTP", otpSchema);
+module.exports = mongoose.model("TrackingOtp", otpSchema);

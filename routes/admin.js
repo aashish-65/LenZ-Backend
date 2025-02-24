@@ -82,12 +82,10 @@ router.post("/signup", verifyApiKey, async (req, res) => {
     // Check if the admin already exists
     const existingAdmin = await Admin.findOne({ $or: [{ email }, { phone }] });
     if (existingAdmin) {
-      return res
-        .status(401)
-        .json({
-          error: "Admin with this email or phone already exists",
-          confirmation: false,
-        });
+      return res.status(401).json({
+        error: "Admin with this email or phone already exists",
+        confirmation: false,
+      });
     }
 
     // Validate address fields
@@ -136,6 +134,15 @@ router.post("/signup", verifyApiKey, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error during signup" });
+  }
+});
+
+router.get("/", verifyApiKey, async (req, res) => {
+  try {
+    const admin = await Admin.find();
+    res.status(200).json({ admin, confirmation: true });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", confirmation: false });
   }
 });
 

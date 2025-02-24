@@ -201,7 +201,7 @@ router.get("/", verifyApiKey, async (req, res) => {
   }
 });
 
-router.put("/:riderId", verifyApiKey, async (req, res) => {
+router.get("/:riderId", verifyApiKey, async (req, res) => {
   const { riderId } = req.params;
 
   try {

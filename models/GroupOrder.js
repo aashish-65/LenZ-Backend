@@ -32,33 +32,19 @@ const groupOrderSchema = new mongoose.Schema(
       ],
       default: "Order Placed For Pickup",
     }, // Tracking status
-    pickup_rider_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Rider",
-      default: null,
-    }, // Rider assigned to the order
     admin_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
-      default: new mongoose.Types.ObjectId("6759ea9d2f38c65245f21cc8"),
+      default: new mongoose.Types.ObjectId("67b2959793404c300f4c6cb0"),
     },
-    pickup_rider_details: {
-      name: { type: String, default: null },
-      phone: { type: String, default: null },
+    admin_pickup: {
+      _id: { type: mongoose.Schema.Types.ObjectId, ref: "RiderOrderHistory", default: null },
+      key: { type: String, default: null },
     },
-    delivery_rider_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Rider",
-      default: null,
-    }, // Rider assigned to the order
-    delivery_rider_details: {
-      name: { type: String, default: null },
-      phone: { type: String, default: null },
+    shop_pickup: {
+      _id: { type: mongoose.Schema.Types.ObjectId, ref: "RiderOrderHistory", default: null },
+      key: { type: String, default: null },
     },
-    common_pickup_key: { type: String, default: null },
-    shop_pickup_key: { type: String, default: null },
-    delAmount: { type: Number, default: 0 },
-    pickupAmount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
