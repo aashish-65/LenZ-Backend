@@ -186,6 +186,7 @@ router.post("/create-group-order", async (req, res) => {
       paymentAmount: pickupAmount,
       delivery_type: "pickup",
       group_order_ids: [savedGroupOrder._id],
+      shop_address: user.address,
     });
     const savedOrderHistory = await newOrderHistory.save();
 
@@ -650,16 +651,14 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
   try {
     const { admin_pickup_key, delivery_rider_id } = req.body;
 
-    // Validate if the common_pickup_key and rider details are provided
-    if (
-      !admin_pickup_key ||
-      !delivery_rider_id
-    ) {
+    // Validate inputs
+    if (!admin_pickup_key || !delivery_rider_id) {
       return res
         .status(400)
         .json({ message: "Invalid input", confirmation: false });
     }
 
+    // Validate rider
     const rider = await Rider.findById(delivery_rider_id);
     if (!rider) {
       return res
@@ -667,70 +666,120 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
         .json({ message: "Rider not found", confirmation: false });
     }
 
-    // Fetch all group orders with the common_pickup_key
-    const groupOrders = await GroupOrder.find({ common_pickup_key }).populate(
-      "userId"
-    );
-
-    // Validate that group orders exist
-    if (groupOrders.length === 0) {
-      return res.status(404).json({
-        message: "No group orders found for the common pickup key",
+    // Check if the rider is available and working
+    if (!rider.isAvailable || !rider.isWorking) {
+      return res.status(400).json({
+        message: "Rider is not available or not working",
         confirmation: false,
       });
     }
 
-    // Update the GroupOrder documents with the rider details and status
-    const updateResult = await GroupOrder.updateMany(
-      { common_pickup_key },
+    // Fetch RiderOrderHistory by admin_pickup_key
+    const riderOrderHistory = await RiderOrderHistory.findOne({
+      order_key: admin_pickup_key,
+      delivery_type: "delivery",
+    });
+    if (!riderOrderHistory) {
+      return res.status(404).json({
+        message: "RiderOrderHistory not found for the given key",
+        confirmation: false,
+      });
+    }
+
+    // Fetch all group orders associated with the group_order_ids
+    const groupOrders = await GroupOrder.find({
+      _id: { $in: riderOrderHistory.group_order_ids },
+    }).populate("userId");
+
+    if (!groupOrders.length) {
+      return res.status(404).json({
+        message: "No group orders found for the given key",
+        confirmation: false,
+      });
+    }
+
+    // Group orders by userId
+    const groupedOrders = {};
+    groupOrders.forEach((order) => {
+      const userId = order.userId._id.toString();
+      if (!groupedOrders[userId]) {
+        groupedOrders[userId] = {
+          userId,
+          shopName: order.userId.shopName,
+          address: order.userId.address,
+          orders: [],
+        };
+      }
+      groupedOrders[userId].orders.push(order._id);
+    });
+
+    // Convert groupedOrders object to an array
+    const groupedOrdersArray = Object.values(groupedOrders);
+
+    // Update RiderOrderHistory with the delivery_rider_id and grouped_orders
+    riderOrderHistory.rider_id = delivery_rider_id;
+    riderOrderHistory.grouped_orders = groupedOrdersArray; // Save grouped orders
+    await riderOrderHistory.save();
+
+    // Update GroupOrder documents with the assigned rider and change tracking status
+    await GroupOrder.updateMany(
+      { _id: { $in: riderOrderHistory.group_order_ids } },
       {
         $set: {
-          delivery_rider_id,
-          delivery_rider_details: { name: rider_name, phone: rider_phone },
           tracking_status: "Out For Delivery",
         },
       }
     );
 
-    if (updateResult.modifiedCount === 0) {
-      return res.status(404).json({
-        message: "No group orders found or updated",
-        confirmation: false,
-      });
-    }
-
-    // Update the rider's availability to false
+    // Update rider's availability
     rider.isAvailable = false;
     await rider.save();
 
-    for (const groupOrder of groupOrders) {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // for (const groupOrder of groupOrders) {
+    //   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-      await TrackingOtp.create({
-        groupOrder_id: groupOrder._id,
-        otp_code: otp,
-        purpose: "delivery",
-        expires_at: new Date(Date.now() + 5 * 60 * 1000),
-      });
+    //   await TrackingOtp.create({
+    //     groupOrder_id: groupOrder._id,
+    //     otp_code: otp,
+    //     purpose: "delivery",
+    //     expires_at: new Date(Date.now() + 5 * 60 * 1000),
+    //   });
 
-      const userEmail = groupOrder.userId.email;
-      await transporter.sendMail({
-        from: `"LenZ" <${process.env.EMAIL_USER}>`,
-        to: userEmail,
-        subject: "Your OTP for Order Delivery",
-        text: `Your OTP for order delivery is ${otp}. It will expire in 5 minutes.`,
-      });
-    }
+    //   const userEmail = groupOrder.userId.email;
+    //   await transporter.sendMail({
+    //     from: `"LenZ" <${process.env.EMAIL_USER}>`,
+    //     to: userEmail,
+    //     subject: "Your OTP for Order Delivery",
+    //     text: `Your OTP for order delivery is ${otp}. It will expire in 5 minutes.`,
+    //   });
+    // }
 
+    // res.status(200).json({
+    //   message: "Rider assigned successfully. OTPs sent to users.",
+    //   confirmation: true,
+    //   data: { common_pickup_key, delivery_rider_id, rider_name, rider_phone },
+    // });
+
+    // Send response
     res.status(200).json({
-      message: "Rider assigned successfully. OTPs sent to users.",
+      message: "Rider assigned successfully",
       confirmation: true,
-      data: { common_pickup_key, delivery_rider_id, rider_name, rider_phone },
+      data: {
+        rider: {
+          _id: rider._id,
+          name: rider.name,
+          phone: rider.phone,
+        },
+        groupedOrders: groupedOrdersArray,
+      },
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Failed to assign rider", confirmation: false, error });
+    console.error(error);
+    res.status(500).json({
+      message: "Failed to assign rider",
+      confirmation: false,
+      error: error.message,
+    });
   }
 });
 

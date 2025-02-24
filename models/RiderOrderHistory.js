@@ -12,6 +12,7 @@ const riderOrderHistorySchema = new mongoose.Schema(
     order_key: { type: String, required: true },
     paymentAmount: { type: Number, required: true },
     isCompleted: { type: Boolean, default: false },
+    shop_address: { type: Object, required: true },
     grouped_orders: { type: Array, default: [] },
   },
   { timestamps: true }
