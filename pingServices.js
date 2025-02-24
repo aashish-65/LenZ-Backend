@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-function startPing(pingUrl, interval = 5 * 60 * 1000) {
+function startPing(pingUrl, interval = 12 * 60 * 1000) {
   let count = 0;
   // Initial ping on startup
   axios
