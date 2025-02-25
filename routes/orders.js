@@ -8,6 +8,7 @@ const GroupOrder = require("../models/GroupOrder");
 const TrackingOtp = require("../models/TrackingOtp");
 const Rider = require("../models/Rider");
 const RiderOrderHistory = require("../models/RiderOrderHistory");
+const Admin = require("../models/Admin");
 
 const nodemailer = require("nodemailer");
 const { verify } = require("crypto");
@@ -186,7 +187,13 @@ router.post("/create-group-order", async (req, res) => {
       paymentAmount: pickupAmount,
       delivery_type: "pickup",
       group_order_ids: [savedGroupOrder._id],
-      shop_address: user.address,
+      shop_details: {
+        shopName: user.shopName,
+        dealerName: user.name,
+        address: user.address,
+        phone: user.phone,
+        alternatePhone: user.alternatePhone,
+      }
     });
     const savedOrderHistory = await newOrderHistory.save();
 
@@ -590,23 +597,6 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
 
     const adminPickupKey = require("crypto").randomUUID();
 
-    const updateResult = await GroupOrder.updateMany(
-      { _id: { $in: groupOrderIds } },
-      {
-        $set: {
-          // admin_pickup: { key: adminPickupKey },
-          tracking_status: "Internal Tracking",
-        },
-      }
-    );
-
-    if (updateResult.modifiedCount === 0) {
-      return res.status(404).json({
-        message: "No group orders found or updated",
-        confirmation: false,
-      });
-    }
-
     const newOrderHistory = new RiderOrderHistory({
       order_key: adminPickupKey,
       paymentAmount: delAmount,
@@ -628,6 +618,22 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
     if (updateHistoryId.modifiedCount === 0) {
       return res.status(404).json({
         message: "No group orders found or updated with History ID",
+        confirmation: false,
+      });
+    }
+
+    const updateResult = await GroupOrder.updateMany(
+      { _id: { $in: groupOrderIds } },
+      {
+        $set: {
+          tracking_status: "Internal Tracking",
+        },
+      }
+    );
+
+    if (updateResult.modifiedCount === 0) {
+      return res.status(404).json({
+        message: "No group orders found or updated",
         confirmation: false,
       });
     }
@@ -721,12 +727,43 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
     riderOrderHistory.grouped_orders = groupedOrdersArray; // Save grouped orders
     await riderOrderHistory.save();
 
+    const groupOrder = await GroupOrder.findById(riderOrderHistory.group_order_ids[0]);
+
+    if (!groupOrder) {
+      return res.status(404).json({
+        message: "GroupOrder not found",
+        confirmation: false,
+      });
+    }
+    const admin_id = groupOrder.admin_id;
+
+    // Generate a 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Save the OTP in the TrackingOtp collection
+    await TrackingOtp.create({
+      order_key: admin_pickup_key,
+      otp_code: otp,
+      purpose: "admin_pickup",
+    });
+
+    // Send the OTP to the admin's email
+    const admin = await Admin.findById(admin_id);
+    if (admin) {
+      await transporter.sendMail({
+        from: `"LenZ" <${process.env.EMAIL_USER}>`,
+        to: admin.email,
+        subject: "Your OTP for Order Delivery",
+        text: `Your OTP for order delivery with key ${admin_pickup_key} is ${otp}.`,
+      });
+    }
+
     // Update GroupOrder documents with the assigned rider and change tracking status
     await GroupOrder.updateMany(
       { _id: { $in: riderOrderHistory.group_order_ids } },
       {
         $set: {
-          tracking_status: "Out For Delivery",
+          tracking_status: "Delivery Accepted",
         },
       }
     );
@@ -735,34 +772,9 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
     rider.isAvailable = false;
     await rider.save();
 
-    // for (const groupOrder of groupOrders) {
-    //   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    //   await TrackingOtp.create({
-    //     groupOrder_id: groupOrder._id,
-    //     otp_code: otp,
-    //     purpose: "delivery",
-    //     expires_at: new Date(Date.now() + 5 * 60 * 1000),
-    //   });
-
-    //   const userEmail = groupOrder.userId.email;
-    //   await transporter.sendMail({
-    //     from: `"LenZ" <${process.env.EMAIL_USER}>`,
-    //     to: userEmail,
-    //     subject: "Your OTP for Order Delivery",
-    //     text: `Your OTP for order delivery is ${otp}. It will expire in 5 minutes.`,
-    //   });
-    // }
-
-    // res.status(200).json({
-    //   message: "Rider assigned successfully. OTPs sent to users.",
-    //   confirmation: true,
-    //   data: { common_pickup_key, delivery_rider_id, rider_name, rider_phone },
-    // });
-
     // Send response
     res.status(200).json({
-      message: "Rider assigned successfully",
+      message: "Rider assigned successfully. OTP sent to admin.",
       confirmation: true,
       data: {
         rider: {
@@ -771,6 +783,7 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
           phone: rider.phone,
         },
         groupedOrders: groupedOrdersArray,
+        otp: otp,
       },
     });
   } catch (error) {

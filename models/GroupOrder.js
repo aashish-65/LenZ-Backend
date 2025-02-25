@@ -27,6 +27,7 @@ const groupOrderSchema = new mongoose.Schema(
         "Order Received By Admin",
         "Work Completed",
         "Internal Tracking",
+        "Delivery Accepted",
         "Out For Delivery",
         "Order Completed",
       ],
