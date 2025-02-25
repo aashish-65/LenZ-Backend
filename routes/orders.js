@@ -193,7 +193,7 @@ router.post("/create-group-order", async (req, res) => {
         address: user.address,
         phone: user.phone,
         alternatePhone: user.alternatePhone,
-      }
+      },
     });
     const savedOrderHistory = await newOrderHistory.save();
 
@@ -391,8 +391,17 @@ router.post(
           .json({ message: "GroupOrder not found", confirmation: false });
       }
 
-      groupOrder.tracking_status = "Order Picked Up";
-      await groupOrder.save();
+      const riderOrderHistory = await RiderOrderHistory.findByIdAndUpdate(
+        groupOrder.shop_pickup._id,
+        { isPickupVerified: true },
+        { new: true } // Return the updated document
+      );
+      if (!riderOrderHistory) {
+        return res.status(404).json({
+          message: "RiderOrderHistory not found",
+          confirmation: false,
+        });
+      }
 
       // Delete the OTP after verification
       await TrackingOtp.deleteOne({ _id: otpRecord._id });
@@ -413,6 +422,9 @@ router.post(
         subject: "Your OTP for Admin Receipt",
         text: `Your OTP for admin receipt for order id : ${groupOrderId} is ${adminOtp}. It will expire in 5 minutes.`,
       });
+
+      groupOrder.tracking_status = "Order Picked Up";
+      await groupOrder.save();
 
       res.status(200).json({
         message: "OTP verified successfully. Admin OTP sent.",
@@ -461,9 +473,10 @@ router.post(
           .json({ message: "Invalid Rider", confirmation: false });
       }
 
-      if(groupOrder.shop_pickup._id.delivery_type !== "pickup"){
+      if (groupOrder.shop_pickup._id.delivery_type !== "pickup") {
         return res
-        .status(400).json({ message: "Invalid Delivery Type", confirmation: false });
+          .status(400)
+          .json({ message: "Invalid Delivery Type", confirmation: false });
       }
 
       // Find the OTP in the database
@@ -484,7 +497,7 @@ router.post(
 
       const riderOrderHistory = await RiderOrderHistory.findByIdAndUpdate(
         groupOrder.shop_pickup._id._id,
-        { isCompleted: true },
+        { isCompleted: true, isDropVerified: true },
         { new: true }
       );
       if (!riderOrderHistory) {
@@ -712,6 +725,9 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
         groupedOrders[userId] = {
           userId,
           shopName: order.userId.shopName,
+          dealerName: order.userId.name,
+          phone: order.userId.phone,
+          alternatePhone: order.userId.alternatePhone,
           address: order.userId.address,
           orders: [],
         };
@@ -727,7 +743,9 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
     riderOrderHistory.grouped_orders = groupedOrdersArray; // Save grouped orders
     await riderOrderHistory.save();
 
-    const groupOrder = await GroupOrder.findById(riderOrderHistory.group_order_ids[0]);
+    const groupOrder = await GroupOrder.findById(
+      riderOrderHistory.group_order_ids[0]
+    );
 
     if (!groupOrder) {
       return res.status(404).json({

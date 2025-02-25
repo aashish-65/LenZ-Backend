@@ -19,13 +19,12 @@ const riderOrderHistorySchema = new mongoose.Schema(
     paymentAmount: { type: Number, required: true },
     isCompleted: { type: Boolean, default: false },
     shop_details: {
-      shopName: { type: String },
-      dealerName: { type: String },
-      address: { type: Object },
-      phone: { type: String },
-      alternatePhone: { type: String },
+      type: Object,
+      default: null,
     },
     grouped_orders: { type: Array, default: [] },
+    isPickupVerified: { type: Boolean, default: false },
+    isDropVerified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
