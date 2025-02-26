@@ -587,7 +587,7 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
     }
 
     // Fetch all group orders with the provided IDs
-    const groupOrders = await GroupOrder.find({ _id: { $in: groupOrderIds } });
+    const groupOrders = await GroupOrder.find({ _id: { $in: groupOrderIds } }).populate("userId")
 
     // Validate that all group orders exist
     if (groupOrders.length !== groupOrderIds.length) {
@@ -822,6 +822,7 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
           name: rider.name,
           phone: rider.phone,
         },
+        groupedOrders: groupedOrdersArray,
         otp: otp,
       },
     });
