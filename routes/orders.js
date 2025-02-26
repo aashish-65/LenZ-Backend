@@ -610,11 +610,33 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
 
     const adminPickupKey = require("crypto").randomUUID();
 
+    // Group orders by userId
+    const groupedOrders = {};
+    groupOrders.forEach((order) => {
+      const userId = order.userId._id.toString();
+      if (!groupedOrders[userId]) {
+        groupedOrders[userId] = {
+          userId,
+          shopName: order.userId.shopName,
+          dealerName: order.userId.name,
+          phone: order.userId.phone,
+          alternatePhone: order.userId.alternatePhone,
+          address: order.userId.address,
+          orders: [],
+        };
+      }
+      groupedOrders[userId].orders.push(order._id);
+    });
+
+    // Convert groupedOrders object to an array
+    const groupedOrdersArray = Object.values(groupedOrders);
+
     const newOrderHistory = new RiderOrderHistory({
       order_key: adminPickupKey,
       paymentAmount: delAmount,
       delivery_type: "delivery",
       group_order_ids: groupOrderIds,
+      grouped_orders: groupedOrdersArray,
     });
     const savedOrderHistory = await newOrderHistory.save();
 
@@ -706,41 +728,41 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
     }
 
     // Fetch all group orders associated with the group_order_ids
-    const groupOrders = await GroupOrder.find({
-      _id: { $in: riderOrderHistory.group_order_ids },
-    }).populate("userId");
+    // const groupOrders = await GroupOrder.find({
+    //   _id: { $in: riderOrderHistory.group_order_ids },
+    // }).populate("userId");
 
-    if (!groupOrders.length) {
-      return res.status(404).json({
-        message: "No group orders found for the given key",
-        confirmation: false,
-      });
-    }
+    // if (!groupOrders.length) {
+    //   return res.status(404).json({
+    //     message: "No group orders found for the given key",
+    //     confirmation: false,
+    //   });
+    // }
 
     // Group orders by userId
-    const groupedOrders = {};
-    groupOrders.forEach((order) => {
-      const userId = order.userId._id.toString();
-      if (!groupedOrders[userId]) {
-        groupedOrders[userId] = {
-          userId,
-          shopName: order.userId.shopName,
-          dealerName: order.userId.name,
-          phone: order.userId.phone,
-          alternatePhone: order.userId.alternatePhone,
-          address: order.userId.address,
-          orders: [],
-        };
-      }
-      groupedOrders[userId].orders.push(order._id);
-    });
+    // const groupedOrders = {};
+    // groupOrders.forEach((order) => {
+    //   const userId = order.userId._id.toString();
+    //   if (!groupedOrders[userId]) {
+    //     groupedOrders[userId] = {
+    //       userId,
+    //       shopName: order.userId.shopName,
+    //       dealerName: order.userId.name,
+    //       phone: order.userId.phone,
+    //       alternatePhone: order.userId.alternatePhone,
+    //       address: order.userId.address,
+    //       orders: [],
+    //     };
+    //   }
+    //   groupedOrders[userId].orders.push(order._id);
+    // });
 
     // Convert groupedOrders object to an array
-    const groupedOrdersArray = Object.values(groupedOrders);
+    // const groupedOrdersArray = Object.values(groupedOrders);
 
     // Update RiderOrderHistory with the delivery_rider_id and grouped_orders
+    // riderOrderHistory.grouped_orders = groupedOrdersArray;
     riderOrderHistory.rider_id = delivery_rider_id;
-    riderOrderHistory.grouped_orders = groupedOrdersArray; // Save grouped orders
     await riderOrderHistory.save();
 
     const groupOrder = await GroupOrder.findById(
@@ -800,7 +822,6 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
           name: rider.name,
           phone: rider.phone,
         },
-        groupedOrders: groupedOrdersArray,
         otp: otp,
       },
     });
@@ -813,6 +834,116 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
     });
   }
 });
+
+router.post(
+  "/:order_key/verify-admin-pickup-otp",
+  verifyApiKey,
+  async (req, res) => {
+    try {
+      const { order_key } = req.params;
+      const { rider_id, otp_code } = req.body;
+
+      // Validate inputs
+      if (!order_key || !rider_id || !otp_code) {
+        return res
+          .status(400)
+          .json({ message: "Invalid input", confirmation: false });
+      }
+
+      // Validate rider
+      const rider = await Rider.findById(rider_id);
+      if (!rider) {
+        return res
+          .status(404)
+          .json({ message: "Rider not found", confirmation: false });
+      }
+
+      // Validate RiderOrderHistory by order_key
+      const riderOrderHistory = await RiderOrderHistory.findOne({
+        order_key,
+        rider_id,
+        delivery_type: "delivery", // Ensure it's for delivery
+      });
+      if (!riderOrderHistory) {
+        return res.status(404).json({
+          message: "RiderOrderHistory not found for the given order key and rider",
+          confirmation: false,
+        });
+      }
+
+      // Validate OTP
+      const otpRecord = await TrackingOtp.findOne({
+        order_key,
+        otp_code,
+        purpose: "admin_pickup", // Ensure the OTP is for admin pickup
+      });
+      if (!otpRecord) {
+        return res
+          .status(400)
+          .json({ message: "Invalid OTP", confirmation: false });
+      }
+
+      // Fetch all group orders associated with the group_order_ids
+      const groupOrders = await GroupOrder.find({
+        _id: { $in: riderOrderHistory.group_order_ids },
+      }).populate("userId");
+
+      // Generate and send OTPs for each group order
+      for (const groupOrder of groupOrders) {
+        const userId = groupOrder.userId._id;
+        const userEmail = groupOrder.userId.email;
+
+        // Generate a 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Save the OTP in the TrackingOtp collection
+        await TrackingOtp.create({
+          groupOrder_id: groupOrder._id,
+          otp_code: otp,
+          purpose: "shop_delivery", // OTP purpose is shop_delivery
+        });
+
+        // Send the OTP to the user's email
+        await transporter.sendMail({
+          from: `"LenZ" <${process.env.EMAIL_USER}>`,
+          to: userEmail,
+          subject: "Your OTP for Order Delivery",
+          text: `Your OTP for order delivery with order ID ${groupOrder._id} is ${otp}.`,
+        });
+      }
+
+      // Update RiderOrderHistory
+      riderOrderHistory.isPickupVerified = true;
+      await riderOrderHistory.save();
+
+      // Update the status of all group orders in the group_order_ids array
+      await GroupOrder.updateMany(
+        { _id: { $in: riderOrderHistory.group_order_ids } },
+        {
+          $set: {
+            tracking_status: "Out For Delivery",
+          },
+        }
+      );
+
+      // Delete the OTP after verification
+      await TrackingOtp.deleteOne({ _id: otpRecord._id });
+
+      res.status(200).json({
+        message: "OTP verified successfully. Orders marked as out for delivery. OTPs sent to users.",
+        confirmation: true,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        message: "Failed to verify OTP",
+        confirmation: false,
+        error: error.message,
+      });
+    }
+  }
+);
+
 
 // POST /api/orders/:groupOrderId/verify-delivery-otp
 router.post(
@@ -827,7 +958,7 @@ router.post(
       const otpRecord = await TrackingOtp.findOne({
         groupOrder_id: groupOrderId,
         otp_code,
-        purpose: "delivery",
+        purpose: "shop_delivery",
       });
       if (!otpRecord) {
         return res
