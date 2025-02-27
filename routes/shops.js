@@ -34,6 +34,20 @@ router.get("/", verifyApiKey, async (req, res) => {
   }
 });
 
+router.get("/:userId", verifyApiKey, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await Shop.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "Shop not found" });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 router.put("/:userId/edit-distance", verifyApiKey, async (req, res) => {
   const { userId } = req.params;
   const { newDistance } = req.body;

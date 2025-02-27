@@ -328,7 +328,7 @@ router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
     }
 
     // Generate a 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
     // Save the OTP to the database
     await TrackingOtp.create({
@@ -406,7 +406,7 @@ router.post(
       // Delete the OTP after verification
       await TrackingOtp.deleteOne({ _id: otpRecord._id });
 
-      const adminOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      const adminOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
       await TrackingOtp.create({
         groupOrder_id: groupOrderId,
@@ -727,41 +727,6 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
       });
     }
 
-    // Fetch all group orders associated with the group_order_ids
-    // const groupOrders = await GroupOrder.find({
-    //   _id: { $in: riderOrderHistory.group_order_ids },
-    // }).populate("userId");
-
-    // if (!groupOrders.length) {
-    //   return res.status(404).json({
-    //     message: "No group orders found for the given key",
-    //     confirmation: false,
-    //   });
-    // }
-
-    // Group orders by userId
-    // const groupedOrders = {};
-    // groupOrders.forEach((order) => {
-    //   const userId = order.userId._id.toString();
-    //   if (!groupedOrders[userId]) {
-    //     groupedOrders[userId] = {
-    //       userId,
-    //       shopName: order.userId.shopName,
-    //       dealerName: order.userId.name,
-    //       phone: order.userId.phone,
-    //       alternatePhone: order.userId.alternatePhone,
-    //       address: order.userId.address,
-    //       orders: [],
-    //     };
-    //   }
-    //   groupedOrders[userId].orders.push(order._id);
-    // });
-
-    // Convert groupedOrders object to an array
-    // const groupedOrdersArray = Object.values(groupedOrders);
-
-    // Update RiderOrderHistory with the delivery_rider_id and grouped_orders
-    // riderOrderHistory.grouped_orders = groupedOrdersArray;
     riderOrderHistory.rider_id = delivery_rider_id;
     await riderOrderHistory.save();
 
@@ -778,7 +743,7 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
     const admin_id = groupOrder.admin_id;
 
     // Generate a 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
     // Save the OTP in the TrackingOtp collection
     await TrackingOtp.create({
@@ -895,7 +860,7 @@ router.post(
         const userEmail = groupOrder.userId.email;
 
         // Generate a 6-digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
         // Save the OTP in the TrackingOtp collection
         await TrackingOtp.create({
