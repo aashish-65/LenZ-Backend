@@ -429,8 +429,8 @@ router.post(
       res.status(200).json({
         message: "OTP verified successfully. Admin OTP sent.",
         confirmation: true,
-        data: groupOrder,
-        otp: adminOtp,
+        // data: groupOrder,
+        // otp: adminOtp,
       });
     } catch (error) {
       console.log(error);

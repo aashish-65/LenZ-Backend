@@ -3,6 +3,7 @@ const nodemailer = require("nodemailer");
 const OTP = require("../models/Otp"); // Import OTP schema
 // const authenticate = require("../middleware/authenticate");
 const TrackingOtp = require("../models/TrackingOtp");
+const { default: mongoose } = require("mongoose");
 
 const router = express.Router();
 
@@ -126,6 +127,11 @@ router.post("/request-tracking-otp", verifyApiKey, async (req, res) => {
     } else {
       // Check for groupOrder_id and purpose in otp db and return the otp
       try {
+        //validate groupOrder_id
+        const isValidId = mongoose.Types.ObjectId.isValid(groupOrder_id);
+        if (!isValidId) {
+          return res.status(400).json({ message: "Invalid groupOrder_id." });
+        }
         const existingOtp = await TrackingOtp.findOne({ groupOrder_id, purpose });
         if (existingOtp) {
           return res.status(200).json(existingOtp);
