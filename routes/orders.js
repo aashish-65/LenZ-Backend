@@ -508,8 +508,6 @@ router.post(
       // Update the rider's order and earnings
       rider.totalOrders++;
       rider.dailyOrders++;
-      rider.totalEarnings += riderOrderHistory.paymentAmount;
-      rider.dailyEarnings += riderOrderHistory.paymentAmount;
       await rider.save();
 
       groupOrder.tracking_status = "Order Received By Admin";
