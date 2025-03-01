@@ -503,8 +503,7 @@ router.post(
         });
       }
 
-      // Update the rider's availability to false
-      rider.isAvailable = true;
+      // Update the rider's order and earnings
       rider.totalOrders++;
       rider.dailyOrders++;
       rider.totalEarnings += riderOrderHistory.paymentAmount;
@@ -998,8 +997,7 @@ router.post(
         await riderOrderHistory.save();
       }
 
-      // Update the rider's availability to false
-      rider.isAvailable = true;
+      // Update the rider's order and earnings
       rider.totalOrders++;
       rider.dailyOrders++;
       rider.totalEarnings += riderOrderHistory.paymentAmount;
@@ -1037,6 +1035,13 @@ router.patch("/:orderKey/complete-transit", verifyApiKey, async (req, res) => {
         .json({ message: "Order not found", confirmation: false });
     }
 
+    const rider = await Rider.findById(riderId);
+    if (!rider) {
+      return res
+        .status(404)
+        .json({ message: "Rider not found", confirmation: false });
+    }
+
     // Check if the rider is authorized to complete the work
     if (order.rider_id.toString() !== riderId) {
       return res
@@ -1054,6 +1059,10 @@ router.patch("/:orderKey/complete-transit", verifyApiKey, async (req, res) => {
     // Update the status of isCompleted in RiderOrderHistory
     order.isCompleted = true;
     await order.save();
+
+    // Update the rider's availability
+    rider.isAvailable = true;
+    await rider.save();
 
     res.status(200).json({
       message: "Work completed successfully",
