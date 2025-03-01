@@ -1047,6 +1047,12 @@ router.patch("/:orderKey/complete-transit", verifyApiKey, async (req, res) => {
         .json({ message: "Order not found", confirmation: false });
     }
 
+    if (order.isCompleted) {
+      return res
+        .status(400)
+        .json({ message: "Order already completed", confirmation: false });
+    }
+
     const rider = await Rider.findById(riderId);
     if (!rider) {
       return res
