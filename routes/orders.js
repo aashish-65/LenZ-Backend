@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const router = express.Router();
 const authenticate = require("../middleware/authenticate");
 // Import your database model (adjust based on your DB setup)
@@ -148,7 +149,8 @@ router.post("/create-group-order", async (req, res) => {
       paymentOption === "full" ? totalAmount + deliveryCharge : deliveryCharge;
     const leftAmount = paymentOption === "full" ? 0 : totalAmount;
 
-    const shopPickupKey = require("crypto").randomUUID();
+    const cryptoKey = require("crypto").randomUUID();
+    const shopPickupKey = cryptoKey.split("-").pop();
 
     // Calculate pickup amount
     pickupAmount = 0.4 * deliveryCharge;
@@ -613,7 +615,8 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
       });
     }
 
-    const adminPickupKey = require("crypto").randomUUID();
+    const cryptoKey = require("crypto").randomUUID();
+    const adminPickupKey = cryptoKey.split("-").pop();
 
     // Group orders by userId
     const groupedOrders = {};
@@ -1000,8 +1003,6 @@ router.post(
       // Update the rider's order and earnings
       rider.totalOrders++;
       rider.dailyOrders++;
-      rider.totalEarnings += riderOrderHistory.paymentAmount;
-      rider.dailyEarnings += riderOrderHistory.paymentAmount;
       await rider.save();
 
       // Delete the OTP after verification
@@ -1026,6 +1027,19 @@ router.patch("/:orderKey/complete-transit", verifyApiKey, async (req, res) => {
   try {
     const { orderKey } = req.params;
     const { riderId } = req.body;
+
+    if (!orderKey || !riderId) {
+      return res
+        .status(400)
+        .json({ message: "Missing required fields", confirmation: false });
+    }
+
+    // check if riderId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(riderId)) {
+      return res
+        .status(400)
+        .json({ message: "Invalid riderId", confirmation: false });
+    }
 
     // Validate if the order exists
     const order = await RiderOrderHistory.findOne({ order_key: orderKey });
@@ -1061,6 +1075,8 @@ router.patch("/:orderKey/complete-transit", verifyApiKey, async (req, res) => {
     await order.save();
 
     // Update the rider's availability
+    rider.totalEarnings += order.paymentAmount;
+    rider.dailyEarnings += order.paymentAmount;
     rider.isAvailable = true;
     await rider.save();
 
