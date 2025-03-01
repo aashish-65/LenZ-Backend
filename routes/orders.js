@@ -491,13 +491,9 @@ router.post(
           .json({ message: "Invalid OTP", confirmation: false });
       }
 
-      // Update the rider's availability to false
-      rider.isAvailable = true;
-      await rider.save();
-
       const riderOrderHistory = await RiderOrderHistory.findByIdAndUpdate(
         groupOrder.shop_pickup._id._id,
-        { isCompleted: true, isDropVerified: true },
+        { isDropVerified: true },
         { new: true }
       );
       if (!riderOrderHistory) {
@@ -506,6 +502,14 @@ router.post(
           confirmation: false,
         });
       }
+
+      // Update the rider's availability to false
+      rider.isAvailable = true;
+      rider.totalOrders++;
+      rider.dailyOrders++;
+      rider.totalEarnings += riderOrderHistory.paymentAmount;
+      rider.dailyEarnings += riderOrderHistory.paymentAmount;
+      await rider.save();
 
       groupOrder.tracking_status = "Order Received By Admin";
       await groupOrder.save();
@@ -587,7 +591,9 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
     }
 
     // Fetch all group orders with the provided IDs
-    const groupOrders = await GroupOrder.find({ _id: { $in: groupOrderIds } }).populate("userId")
+    const groupOrders = await GroupOrder.find({
+      _id: { $in: groupOrderIds },
+    }).populate("userId");
 
     // Validate that all group orders exist
     if (groupOrders.length !== groupOrderIds.length) {
@@ -787,7 +793,6 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
           name: rider.name,
           phone: rider.phone,
         },
-        groupedOrders: groupedOrdersArray,
         otp: otp,
       },
     });
@@ -832,7 +837,8 @@ router.post(
       });
       if (!riderOrderHistory) {
         return res.status(404).json({
-          message: "RiderOrderHistory not found for the given order key and rider",
+          message:
+            "RiderOrderHistory not found for the given order key and rider",
           confirmation: false,
         });
       }
@@ -896,7 +902,8 @@ router.post(
       await TrackingOtp.deleteOne({ _id: otpRecord._id });
 
       res.status(200).json({
-        message: "OTP verified successfully. Orders marked as out for delivery. OTPs sent to users.",
+        message:
+          "OTP verified successfully. Orders marked as out for delivery. OTPs sent to users.",
         confirmation: true,
       });
     } catch (error) {
@@ -910,7 +917,6 @@ router.post(
   }
 );
 
-
 // POST /api/orders/:groupOrderId/verify-delivery-otp
 router.post(
   "/:groupOrderId/verify-delivery-otp",
@@ -918,7 +924,36 @@ router.post(
   async (req, res) => {
     try {
       const { groupOrderId } = req.params;
-      const { otp_code } = req.body;
+      const { otp_code, rider_id } = req.body;
+
+      // Update the group order status
+      const groupOrder = await GroupOrder.findById(groupOrderId).populate(
+        "admin_pickup._id"
+      );
+      if (!groupOrder) {
+        return res
+          .status(404)
+          .json({ message: "GroupOrder not found", confirmation: false });
+      }
+
+      const rider = await Rider.findById(rider_id);
+      if (!rider) {
+        return res
+          .status(404)
+          .json({ message: "Rider not found", confirmation: false });
+      }
+
+      if (groupOrder.admin_pickup._id.rider_id.toString() !== rider_id) {
+        return res
+          .status(400)
+          .json({ message: "Invalid Rider", confirmation: false });
+      }
+
+      if (groupOrder.admin_pickup._id.delivery_type !== "delivery") {
+        return res
+          .status(400)
+          .json({ message: "Invalid Delivery Type", confirmation: false });
+      }
 
       // Find the OTP in the database
       const otpRecord = await TrackingOtp.findOne({
@@ -928,54 +963,51 @@ router.post(
       });
       if (!otpRecord) {
         return res
-          .status(400)
+          .status(401)
           .json({ message: "Invalid OTP", confirmation: false });
-      }
-
-      // Update the group order status
-      const groupOrder = await GroupOrder.findById(groupOrderId);
-      if (!groupOrder) {
-        return res
-          .status(404)
-          .json({ message: "GroupOrder not found", confirmation: false });
-      }
-
-      const rider = await Rider.findById(groupOrder.delivery_rider_id);
-      if (!rider) {
-        return res
-          .status(404)
-          .json({ message: "Rider not found", confirmation: false });
       }
 
       groupOrder.tracking_status = "Order Completed";
       await groupOrder.save();
 
-      // Update the rider's availability to false
-      rider.isAvailable = true;
-      await rider.save();
+      const riderOrderHistory = await RiderOrderHistory.findById(
+        groupOrder.admin_pickup._id._id
+      );
+      if (!riderOrderHistory) {
+        return res.status(404).json({
+          message: "RiderOrderHistory not found",
+          confirmation: false,
+        });
+      }
 
-      // Delete the OTP after verification
-      await OTP.deleteOne({ _id: otpRecord._id });
+      const groupOrderIds = riderOrderHistory.group_order_ids;
 
-      // Check if all group orders with the same common_pickup_key are completed
-      const commonPickupKey = groupOrder.common_pickup_key;
-      const allGroupOrders = await GroupOrder.find({
-        common_pickup_key: commonPickupKey,
+      // Fetch all group orders associated with the group_order_ids
+      const groupOrders = await GroupOrder.find({
+        _id: { $in: groupOrderIds },
       });
 
-      const allCompleted = allGroupOrders.every(
+      // Check if all group orders have tracking_status === "Order Completed"
+      const allOrdersCompleted = groupOrders.every(
         (order) => order.tracking_status === "Order Completed"
       );
 
-      if (allCompleted) {
-        // Create the Delivery Order History to the database
-        await RiderOrderHistory.create({
-          rider_id: groupOrder.delivery_rider_id,
-          delivery_type: "delivery",
-          order_key: groupOrder.common_pickup_key,
-          paymentAmount: groupOrder.delAmount,
-        });
+      if (allOrdersCompleted) {
+        // Update isDropVerified in RiderOrderHistory
+        riderOrderHistory.isDropVerified = true;
+        await riderOrderHistory.save();
       }
+
+      // Update the rider's availability to false
+      rider.isAvailable = true;
+      rider.totalOrders++;
+      rider.dailyOrders++;
+      rider.totalEarnings += riderOrderHistory.paymentAmount;
+      rider.dailyEarnings += riderOrderHistory.paymentAmount;
+      await rider.save();
+
+      // Delete the OTP after verification
+      await otpRecord.deleteOne({ _id: otpRecord._id });
 
       res.status(200).json({
         message: "OTP verified successfully",
@@ -983,11 +1015,50 @@ router.post(
         data: groupOrder,
       });
     } catch (error) {
+      console.error(error);
       res
         .status(500)
         .json({ message: "Failed to verify OTP", confirmation: false, error });
     }
   }
 );
+
+// PATCH /api/orders/:orderKey/complete-transit
+router.patch("/:orderKey/complete-transit", verifyApiKey, async (req, res) => {
+  try {
+    const { orderKey } = req.params;
+    const { riderId } = req.body;
+
+    // Validate if the order exists
+    const order = await RiderOrderHistory.findOne({ order_key: orderKey });
+    if (!order) {
+      return res
+        .status(404)
+        .json({ message: "Order not found", confirmation: false });
+    }
+
+    // Check if drop is verified
+    if (!order.isDropVerified) {
+      return res
+        .status(400)
+        .json({ message: "Drop is not completed", confirmation: false });
+    }
+
+    // Update the status of isCompleted in RiderOrderHistory
+    order.isCompleted = true;
+    await order.save();
+
+    res.status(200).json({
+      message: "Work completed successfully",
+      confirmation: true,
+      data: order,
+    });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Failed to complete work", confirmation: false, error });
+  }
+});
 
 module.exports = router;
