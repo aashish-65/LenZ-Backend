@@ -1037,6 +1037,13 @@ router.patch("/:orderKey/complete-transit", verifyApiKey, async (req, res) => {
         .json({ message: "Order not found", confirmation: false });
     }
 
+    // Check if the rider is authorized to complete the work
+    if (order.rider_id.toString() !== riderId) {
+      return res
+        .status(401)
+        .json({ message: "Unauthorized", confirmation: false });
+    }
+
     // Check if drop is verified
     if (!order.isDropVerified) {
       return res
