@@ -273,11 +273,14 @@ router.put("/:riderId/edit-phone-number", verifyApiKey, async (req, res) => {
 });
 
 // API to get all orders
-router.get("/order-history", async (req, res) => {
+router.get("/order-history", verifyApiKey, async (req, res) => {
   try {
 
     // Find orders for the given rider_id
-    const orders = await RiderOrderHistory.find();
+    const orders = await RiderOrderHistory.find().populate({
+      path: "group_order_ids",
+      select: "_id tracking_status",
+    });
 
     if (orders.length === 0) {
       return res
