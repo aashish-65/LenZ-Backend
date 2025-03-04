@@ -1,5 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const axios = require("axios");
 const router = express.Router();
 const authenticate = require("../middleware/authenticate");
 // Import your database model (adjust based on your DB setup)
@@ -1309,8 +1310,8 @@ router.get("/active-shop-orders", verifyApiKey, async (req, res) => {
             }
           );
 
-          if (otpResponse.data && otpResponse.data.otp) {
-            responseObj.otpCode = otpResponse.data.otp;
+          if (otpResponse.data && otpResponse.data.otp_code) {
+            responseObj.otpCode = otpResponse.data.otp_code;
           }
         } catch (error) {
           console.error("Error fetching OTP:", error.message);
