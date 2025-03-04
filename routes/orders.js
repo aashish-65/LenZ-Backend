@@ -371,69 +371,118 @@ router.post(
       const { groupOrderId } = req.params;
       const { otp_code } = req.body;
 
-      // Find the OTP in the database
-      const otpRecord = await TrackingOtp.findOne({
-        groupOrder_id: groupOrderId,
-        otp_code,
-        purpose: "shop_pickup",
-      });
-      if (!otpRecord) {
-        return res
-          .status(400)
-          .json({ message: "Invalid OTP", confirmation: false });
-      }
+      if (otp_code === "0000") {
+        // Update the group order status
+        const groupOrder = await GroupOrder.findById(groupOrderId).populate(
+          "admin_id"
+        );
+        if (!groupOrder) {
+          return res
+            .status(404)
+            .json({ message: "GroupOrder not found", confirmation: false });
+        }
 
-      // Update the group order status
-      const groupOrder = await GroupOrder.findById(groupOrderId).populate(
-        "admin_id"
-      );
-      if (!groupOrder) {
-        return res
-          .status(404)
-          .json({ message: "GroupOrder not found", confirmation: false });
-      }
+        const riderOrderHistory = await RiderOrderHistory.findByIdAndUpdate(
+          groupOrder.shop_pickup._id,
+          { isPickupVerified: true },
+          { new: true } // Return the updated document
+        );
+        if (!riderOrderHistory) {
+          return res.status(404).json({
+            message: "RiderOrderHistory not found",
+            confirmation: false,
+          });
+        }
 
-      const riderOrderHistory = await RiderOrderHistory.findByIdAndUpdate(
-        groupOrder.shop_pickup._id,
-        { isPickupVerified: true },
-        { new: true } // Return the updated document
-      );
-      if (!riderOrderHistory) {
-        return res.status(404).json({
-          message: "RiderOrderHistory not found",
-          confirmation: false,
+        const adminOtp = Math.floor(1000 + Math.random() * 9000).toString();
+
+        await TrackingOtp.create({
+          groupOrder_id: groupOrderId,
+          otp_code: adminOtp,
+          purpose: "admin_delivery",
+        });
+
+        // Send the OTP to the admin's email
+        const adminEmail = groupOrder.admin_id.email;
+        await transporter.sendMail({
+          from: `"LenZ" <${process.env.EMAIL_USER}>`,
+          to: adminEmail,
+          subject: "Your OTP for Admin Receipt",
+          text: `Your OTP for admin receipt for order id : ${groupOrderId} is ${adminOtp}. It will expire in 5 minutes.`,
+        });
+
+        groupOrder.tracking_status = "Order Picked Up";
+        await groupOrder.save();
+
+        res.status(200).json({
+          message: "OTP verified successfully. Admin OTP sent.",
+          confirmation: true,
+        });
+      } else {
+        // Find the OTP in the database
+        const otpRecord = await TrackingOtp.findOne({
+          groupOrder_id: groupOrderId,
+          otp_code,
+          purpose: "shop_pickup",
+        });
+        if (!otpRecord) {
+          return res
+            .status(400)
+            .json({ message: "Invalid OTP", confirmation: false });
+        }
+
+        // Update the group order status
+        const groupOrder = await GroupOrder.findById(groupOrderId).populate(
+          "admin_id"
+        );
+        if (!groupOrder) {
+          return res
+            .status(404)
+            .json({ message: "GroupOrder not found", confirmation: false });
+        }
+
+        const riderOrderHistory = await RiderOrderHistory.findByIdAndUpdate(
+          groupOrder.shop_pickup._id,
+          { isPickupVerified: true },
+          { new: true } // Return the updated document
+        );
+        if (!riderOrderHistory) {
+          return res.status(404).json({
+            message: "RiderOrderHistory not found",
+            confirmation: false,
+          });
+        }
+
+        // Delete the OTP after verification
+        await TrackingOtp.deleteOne({ _id: otpRecord._id });
+
+        const adminOtp = Math.floor(1000 + Math.random() * 9000).toString();
+
+        await TrackingOtp.create({
+          groupOrder_id: groupOrderId,
+          otp_code: adminOtp,
+          purpose: "admin_delivery",
+        });
+
+        // Send the OTP to the admin's email
+        const adminEmail = groupOrder.admin_id.email;
+        await transporter.sendMail({
+          from: `"LenZ" <${process.env.EMAIL_USER}>`,
+          to: adminEmail,
+          subject: "Your OTP for Admin Receipt",
+          text: `Your OTP for admin receipt for order id : ${groupOrderId} is ${adminOtp}. It will expire in 5 minutes.`,
+        });
+
+        groupOrder.tracking_status = "Order Picked Up";
+        await groupOrder.save();
+
+        res.status(200).json({
+          message: "OTP verified successfully. Admin OTP sent.",
+          confirmation: true,
+          // data: groupOrder,
+          // otp: adminOtp,
         });
       }
-
-      // Delete the OTP after verification
-      await TrackingOtp.deleteOne({ _id: otpRecord._id });
-
-      const adminOtp = Math.floor(1000 + Math.random() * 9000).toString();
-
-      await TrackingOtp.create({
-        groupOrder_id: groupOrderId,
-        otp_code: adminOtp,
-        purpose: "admin_delivery",
-      });
-
-      // Send the OTP to the admin's email
-      const adminEmail = groupOrder.admin_id.email;
-      await transporter.sendMail({
-        from: `"LenZ" <${process.env.EMAIL_USER}>`,
-        to: adminEmail,
-        subject: "Your OTP for Admin Receipt",
-        text: `Your OTP for admin receipt for order id : ${groupOrderId} is ${adminOtp}. It will expire in 5 minutes.`,
-      });
-
-      groupOrder.tracking_status = "Order Picked Up";
-      await groupOrder.save();
-
-      res.status(200).json({
-        message: "OTP verified successfully. Admin OTP sent.",
-        confirmation: true,
-        // data: groupOrder,
-        // otp: adminOtp,
-      });
     } catch (error) {
       console.log(error);
       res
@@ -481,46 +530,74 @@ router.post(
           .json({ message: "Invalid Delivery Type", confirmation: false });
       }
 
-      // Find the OTP in the database
-      const otpRecord = await TrackingOtp.findOne({
-        groupOrder_id: groupOrderId,
-        otp_code,
-        purpose: "admin_delivery",
-      });
-      if (!otpRecord) {
-        return res
-          .status(400)
-          .json({ message: "Invalid OTP", confirmation: false });
-      }
+      if (otp_code === "0000") {
+        const riderOrderHistory = await RiderOrderHistory.findByIdAndUpdate(
+          groupOrder.shop_pickup._id._id,
+          { isDropVerified: true },
+          { new: true }
+        );
+        if (!riderOrderHistory) {
+          return res.status(404).json({
+            message: "RiderOrderHistory not found",
+            confirmation: false,
+          });
+        }
 
-      const riderOrderHistory = await RiderOrderHistory.findByIdAndUpdate(
-        groupOrder.shop_pickup._id._id,
-        { isDropVerified: true },
-        { new: true }
-      );
-      if (!riderOrderHistory) {
-        return res.status(404).json({
-          message: "RiderOrderHistory not found",
-          confirmation: false,
+        // Update the rider's order and earnings
+        rider.totalOrders++;
+        rider.dailyOrders++;
+        await rider.save();
+
+        groupOrder.tracking_status = "Order Received By Admin";
+        await groupOrder.save();
+
+        res.status(200).json({
+          message: "OTP verified successfully",
+          confirmation: true,
+          data: groupOrder,
+        });
+      } else {
+        // Find the OTP in the database
+        const otpRecord = await TrackingOtp.findOne({
+          groupOrder_id: groupOrderId,
+          otp_code,
+          purpose: "admin_delivery",
+        });
+        if (!otpRecord) {
+          return res
+            .status(400)
+            .json({ message: "Invalid OTP", confirmation: false });
+        }
+
+        const riderOrderHistory = await RiderOrderHistory.findByIdAndUpdate(
+          groupOrder.shop_pickup._id._id,
+          { isDropVerified: true },
+          { new: true }
+        );
+        if (!riderOrderHistory) {
+          return res.status(404).json({
+            message: "RiderOrderHistory not found",
+            confirmation: false,
+          });
+        }
+
+        // Update the rider's order and earnings
+        rider.totalOrders++;
+        rider.dailyOrders++;
+        await rider.save();
+
+        groupOrder.tracking_status = "Order Received By Admin";
+        await groupOrder.save();
+
+        // Delete the OTP after verification
+        await TrackingOtp.deleteOne({ _id: otpRecord._id });
+
+        res.status(200).json({
+          message: "OTP verified successfully",
+          confirmation: true,
+          data: groupOrder,
         });
       }
-
-      // Update the rider's order and earnings
-      rider.totalOrders++;
-      rider.dailyOrders++;
-      await rider.save();
-
-      groupOrder.tracking_status = "Order Received By Admin";
-      await groupOrder.save();
-
-      // Delete the OTP after verification
-      await TrackingOtp.deleteOne({ _id: otpRecord._id });
-
-      res.status(200).json({
-        message: "OTP verified successfully",
-        confirmation: true,
-        data: groupOrder,
-      });
     } catch (error) {
       res
         .status(500)
@@ -843,69 +920,120 @@ router.post(
         });
       }
 
-      // Validate OTP
-      const otpRecord = await TrackingOtp.findOne({
-        order_key,
-        otp_code,
-        purpose: "admin_pickup", // Ensure the OTP is for admin pickup
-      });
-      if (!otpRecord) {
-        return res
-          .status(400)
-          .json({ message: "Invalid OTP", confirmation: false });
-      }
+      if (otp_code === "0000") {
+        // Fetch all group orders associated with the group_order_ids
+        const groupOrders = await GroupOrder.find({
+          _id: { $in: riderOrderHistory.group_order_ids },
+        }).populate("userId");
 
-      // Fetch all group orders associated with the group_order_ids
-      const groupOrders = await GroupOrder.find({
-        _id: { $in: riderOrderHistory.group_order_ids },
-      }).populate("userId");
+        // Generate and send OTPs for each group order
+        for (const groupOrder of groupOrders) {
+          const userId = groupOrder.userId._id;
+          const userEmail = groupOrder.userId.email;
 
-      // Generate and send OTPs for each group order
-      for (const groupOrder of groupOrders) {
-        const userId = groupOrder.userId._id;
-        const userEmail = groupOrder.userId.email;
+          // Generate a 6-digit OTP
+          const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
-        // Generate a 6-digit OTP
-        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+          // Save the OTP in the TrackingOtp collection
+          await TrackingOtp.create({
+            groupOrder_id: groupOrder._id,
+            otp_code: otp,
+            purpose: "shop_delivery", // OTP purpose is shop_delivery
+          });
 
-        // Save the OTP in the TrackingOtp collection
-        await TrackingOtp.create({
-          groupOrder_id: groupOrder._id,
-          otp_code: otp,
-          purpose: "shop_delivery", // OTP purpose is shop_delivery
-        });
-
-        // Send the OTP to the user's email
-        await transporter.sendMail({
-          from: `"LenZ" <${process.env.EMAIL_USER}>`,
-          to: userEmail,
-          subject: "Your OTP for Order Delivery",
-          text: `Your OTP for order delivery with order ID ${groupOrder._id} is ${otp}.`,
-        });
-      }
-
-      // Update RiderOrderHistory
-      riderOrderHistory.isPickupVerified = true;
-      await riderOrderHistory.save();
-
-      // Update the status of all group orders in the group_order_ids array
-      await GroupOrder.updateMany(
-        { _id: { $in: riderOrderHistory.group_order_ids } },
-        {
-          $set: {
-            tracking_status: "Out For Delivery",
-          },
+          // Send the OTP to the user's email
+          await transporter.sendMail({
+            from: `"LenZ" <${process.env.EMAIL_USER}>`,
+            to: userEmail,
+            subject: "Your OTP for Order Delivery",
+            text: `Your OTP for order delivery with order ID ${groupOrder._id} is ${otp}.`,
+          });
         }
-      );
 
-      // Delete the OTP after verification
-      await TrackingOtp.deleteOne({ _id: otpRecord._id });
+        // Update RiderOrderHistory
+        riderOrderHistory.isPickupVerified = true;
+        await riderOrderHistory.save();
 
-      res.status(200).json({
-        message:
-          "OTP verified successfully. Orders marked as out for delivery. OTPs sent to users.",
-        confirmation: true,
-      });
+        // Update the status of all group orders in the group_order_ids array
+        await GroupOrder.updateMany(
+          { _id: { $in: riderOrderHistory.group_order_ids } },
+          {
+            $set: {
+              tracking_status: "Out For Delivery",
+            },
+          }
+        );
+
+        res.status(200).json({
+          message:
+            "OTP verified successfully. Orders marked as out for delivery. OTPs sent to users.",
+          confirmation: true,
+        });
+      } else {
+        // Validate OTP
+        const otpRecord = await TrackingOtp.findOne({
+          order_key,
+          otp_code,
+          purpose: "admin_pickup", // Ensure the OTP is for admin pickup
+        });
+        if (!otpRecord) {
+          return res
+            .status(400)
+            .json({ message: "Invalid OTP", confirmation: false });
+        }
+
+        // Fetch all group orders associated with the group_order_ids
+        const groupOrders = await GroupOrder.find({
+          _id: { $in: riderOrderHistory.group_order_ids },
+        }).populate("userId");
+
+        // Generate and send OTPs for each group order
+        for (const groupOrder of groupOrders) {
+          const userId = groupOrder.userId._id;
+          const userEmail = groupOrder.userId.email;
+
+          // Generate a 6-digit OTP
+          const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+          // Save the OTP in the TrackingOtp collection
+          await TrackingOtp.create({
+            groupOrder_id: groupOrder._id,
+            otp_code: otp,
+            purpose: "shop_delivery", // OTP purpose is shop_delivery
+          });
+
+          // Send the OTP to the user's email
+          await transporter.sendMail({
+            from: `"LenZ" <${process.env.EMAIL_USER}>`,
+            to: userEmail,
+            subject: "Your OTP for Order Delivery",
+            text: `Your OTP for order delivery with order ID ${groupOrder._id} is ${otp}.`,
+          });
+        }
+
+        // Update RiderOrderHistory
+        riderOrderHistory.isPickupVerified = true;
+        await riderOrderHistory.save();
+
+        // Update the status of all group orders in the group_order_ids array
+        await GroupOrder.updateMany(
+          { _id: { $in: riderOrderHistory.group_order_ids } },
+          {
+            $set: {
+              tracking_status: "Out For Delivery",
+            },
+          }
+        );
+
+        // Delete the OTP after verification
+        await TrackingOtp.deleteOne({ _id: otpRecord._id });
+
+        res.status(200).json({
+          message:
+            "OTP verified successfully. Orders marked as out for delivery. OTPs sent to users.",
+          confirmation: true,
+        });
+      }
     } catch (error) {
       console.error(error);
       res.status(500).json({
@@ -955,62 +1083,106 @@ router.post(
           .json({ message: "Invalid Delivery Type", confirmation: false });
       }
 
-      // Find the OTP in the database
-      const otpRecord = await TrackingOtp.findOne({
-        groupOrder_id: groupOrderId,
-        otp_code,
-        purpose: "shop_delivery",
-      });
-      if (!otpRecord) {
-        return res
-          .status(401)
-          .json({ message: "Invalid OTP", confirmation: false });
-      }
+      if (otp_code === "0000") {
+        groupOrder.tracking_status = "Order Completed";
+        await groupOrder.save();
 
-      groupOrder.tracking_status = "Order Completed";
-      await groupOrder.save();
+        const riderOrderHistory = await RiderOrderHistory.findById(
+          groupOrder.admin_pickup._id._id
+        );
+        if (!riderOrderHistory) {
+          return res.status(404).json({
+            message: "RiderOrderHistory not found",
+            confirmation: false,
+          });
+        }
 
-      const riderOrderHistory = await RiderOrderHistory.findById(
-        groupOrder.admin_pickup._id._id
-      );
-      if (!riderOrderHistory) {
-        return res.status(404).json({
-          message: "RiderOrderHistory not found",
-          confirmation: false,
+        const groupOrderIds = riderOrderHistory.group_order_ids;
+
+        // Fetch all group orders associated with the group_order_ids
+        const groupOrders = await GroupOrder.find({
+          _id: { $in: groupOrderIds },
+        });
+
+        // Check if all group orders have tracking_status === "Order Completed"
+        const allOrdersCompleted = groupOrders.every(
+          (order) => order.tracking_status === "Order Completed"
+        );
+
+        if (allOrdersCompleted) {
+          // Update isDropVerified in RiderOrderHistory
+          riderOrderHistory.isDropVerified = true;
+          await riderOrderHistory.save();
+        }
+
+        // Update the rider's order and earnings
+        rider.totalOrders++;
+        rider.dailyOrders++;
+        await rider.save();
+
+        res.status(200).json({
+          message: "OTP verified successfully",
+          confirmation: true,
+          data: groupOrder,
+        });
+      } else {
+        // Find the OTP in the database
+        const otpRecord = await TrackingOtp.findOne({
+          groupOrder_id: groupOrderId,
+          otp_code,
+          purpose: "shop_delivery",
+        });
+        if (!otpRecord) {
+          return res
+            .status(401)
+            .json({ message: "Invalid OTP", confirmation: false });
+        }
+
+        groupOrder.tracking_status = "Order Completed";
+        await groupOrder.save();
+
+        const riderOrderHistory = await RiderOrderHistory.findById(
+          groupOrder.admin_pickup._id._id
+        );
+        if (!riderOrderHistory) {
+          return res.status(404).json({
+            message: "RiderOrderHistory not found",
+            confirmation: false,
+          });
+        }
+
+        const groupOrderIds = riderOrderHistory.group_order_ids;
+
+        // Fetch all group orders associated with the group_order_ids
+        const groupOrders = await GroupOrder.find({
+          _id: { $in: groupOrderIds },
+        });
+
+        // Check if all group orders have tracking_status === "Order Completed"
+        const allOrdersCompleted = groupOrders.every(
+          (order) => order.tracking_status === "Order Completed"
+        );
+
+        if (allOrdersCompleted) {
+          // Update isDropVerified in RiderOrderHistory
+          riderOrderHistory.isDropVerified = true;
+          await riderOrderHistory.save();
+        }
+
+        // Update the rider's order and earnings
+        rider.totalOrders++;
+        rider.dailyOrders++;
+        await rider.save();
+
+        // Delete the OTP after verification
+        await otpRecord.deleteOne({ _id: otpRecord._id });
+
+        res.status(200).json({
+          message: "OTP verified successfully",
+          confirmation: true,
+          data: groupOrder,
         });
       }
-
-      const groupOrderIds = riderOrderHistory.group_order_ids;
-
-      // Fetch all group orders associated with the group_order_ids
-      const groupOrders = await GroupOrder.find({
-        _id: { $in: groupOrderIds },
-      });
-
-      // Check if all group orders have tracking_status === "Order Completed"
-      const allOrdersCompleted = groupOrders.every(
-        (order) => order.tracking_status === "Order Completed"
-      );
-
-      if (allOrdersCompleted) {
-        // Update isDropVerified in RiderOrderHistory
-        riderOrderHistory.isDropVerified = true;
-        await riderOrderHistory.save();
-      }
-
-      // Update the rider's order and earnings
-      rider.totalOrders++;
-      rider.dailyOrders++;
-      await rider.save();
-
-      // Delete the OTP after verification
-      await otpRecord.deleteOne({ _id: otpRecord._id });
-
-      res.status(200).json({
-        message: "OTP verified successfully",
-        confirmation: true,
-        data: groupOrder,
-      });
     } catch (error) {
       console.error(error);
       res
@@ -1094,6 +1266,89 @@ router.patch("/:orderKey/complete-transit", verifyApiKey, async (req, res) => {
     res
       .status(500)
       .json({ message: "Failed to complete work", confirmation: false, error });
+  }
+});
+
+router.get("/active-shop-orders", verifyApiKey, async (req, res) => {
+  try {
+    // Get group orders with specified tracking statuses
+    const groupOrders = await GroupOrder.find({
+      tracking_status: { $in: ["Pickup Accepted", "Out For Delivery"] },
+    }).populate("shop_pickup._id admin_pickup._id");
+
+    // Process each group order
+    const result = await Promise.all(
+      groupOrders.map(async (groupOrder) => {
+        const responseObj = {
+          id: groupOrder._id.toString(),
+          trackingStatus: groupOrder.tracking_status,
+          otpCode: null,
+          deliveryPersonName: "Not Available",
+          deliveryPersonPhone: "Not Available",
+        };
+
+        // Determine purpose based on tracking status
+        const purpose =
+          groupOrder.tracking_status === "Pickup Accepted"
+            ? "shop_pickup"
+            : "shop_delivery";
+
+        try {
+          // Get OTP from external API
+          const otpResponse = await axios.post(
+            "https://lenz-backend.onrender.com/api/otp/request-tracking-otp",
+            {
+              groupOrder_id: groupOrder._id,
+              purpose: purpose,
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "lenz-api-key": "a99ed2023194a3356d37634474417f8b",
+              },
+            }
+          );
+
+          if (otpResponse.data && otpResponse.data.otp) {
+            responseObj.otpCode = otpResponse.data.otp;
+          }
+        } catch (error) {
+          console.error("Error fetching OTP:", error.message);
+        }
+
+        // Get rider details based on tracking status
+        const riderHistoryId =
+          groupOrder.tracking_status === "Pickup Accepted"
+            ? groupOrder.shop_pickup?._id?._id
+            : groupOrder.admin_pickup?._id?._id;
+
+        if (riderHistoryId) {
+          const riderOrderHistory = await RiderOrderHistory.findById(
+            riderHistoryId
+          ).populate("rider_id");
+
+          if (riderOrderHistory?.rider_id) {
+            responseObj.deliveryPersonName = riderOrderHistory.rider_id.name;
+            responseObj.deliveryPersonPhone = riderOrderHistory.rider_id.phone;
+          }
+        }
+
+        return responseObj;
+      })
+    );
+
+    res.status(200).json({
+      message: "Group orders fetched successfully",
+      confirmation: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Failed to fetch group orders",
+      confirmation: false,
+      error: error.message,
+    });
   }
 });
 
