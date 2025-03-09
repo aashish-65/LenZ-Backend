@@ -208,13 +208,16 @@ router.post("/create-group-order", async (req, res) => {
     user.creditBalance = user.creditBalance + savedGroupOrder.leftAmount;
     await user.save();
 
-    const orderDetails = await RiderOrderHistory.findById(savedOrderHistory._id).populate({
+    const orderDetails = await RiderOrderHistory.findById(
+      savedOrderHistory._id
+    ).populate({
       path: "group_order_ids",
       select: "_id tracking_status",
     });
 
+    const message = `A new group order has been created from shop!`;
     // Notify the admin using Socket.IO
-    notifyAdmin(orderDetails, req.app.get("io"));
+    notifyAdmin(orderDetails, message, req.app.get("io"));
 
     res.status(201).json({
       message: "Group order created successfully",
@@ -232,14 +235,12 @@ router.post("/create-group-order", async (req, res) => {
 });
 
 // Function to notify the admin (you can implement this logic)
-const notifyAdmin = (groupOrder, io) => {
-  console.log(
-    `Notification: A new group order has been created with ID ${groupOrder}`
-  );
+const notifyAdmin = (groupOrder, message, io) => {
+  console.log(`Notification: ${message} with ID ${groupOrder}`);
 
   // Emit a real-time event to the admin
   io.to("adminRoom").emit("newGroupOrder", {
-    message: "A new group order has been created from shop!",
+    message: message,
     data: groupOrder,
     // groupOrderId: groupOrder._id,
     // userId: groupOrder.userId,
@@ -372,6 +373,17 @@ router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
       subject: "Your OTP for Order Pickup",
       text: `Your OTP for order pickup is ${otp}. It will expire in 5 minutes.`,
     });
+
+    const orderDetails = await RiderOrderHistory.findById(
+      groupOrder.shop_pickup._id._id
+    ).populate({
+      path: "group_order_ids",
+      select: "_id tracking_status",
+    });
+
+    const message = `A new group order has been accepted for pickup!`;
+    // Notify the admin using Socket.IO
+    notifyAdmin(orderDetails, message, req.app.get("io"));
 
     res.status(200).json({
       message: "Pickup accepted successfully. OTP sent to your email.",
@@ -780,13 +792,16 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
       });
     }
 
-    const orderDetails = await RiderOrderHistory.findById(savedOrderHistory._id).populate({
+    const orderDetails = await RiderOrderHistory.findById(
+      savedOrderHistory._id
+    ).populate({
       path: "group_order_ids",
       select: "_id tracking_status",
     });
 
+    const message = `A new group order has been created from admin!`;
     // Notify the admin using Socket.IO
-    notifyRider(orderDetails, req.app.get("io"));
+    notifyAdmin(orderDetails, message, req.app.get("io"));
 
     res.status(200).json({
       message: "Admin pickup key assigned successfully",
@@ -802,19 +817,6 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
     });
   }
 });
-
-// Function to notify the admin (you can implement this logic)
-const notifyRider = (groupOrder, io) => {
-  console.log(
-    `Notification: A new group order has been created with ID ${groupOrder}`
-  );
-
-  // Emit a real-time event to the admin
-  io.to("adminRoom").emit("newGroupOrder", {
-    message: "A new group order has been created from admin!",
-    data: groupOrder,
-  });
-};
 
 // POST /api/orders/assign-rider
 router.post("/assign-rider", verifyApiKey, async (req, res) => {
@@ -912,6 +914,17 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
     // Update rider's availability
     rider.isAvailable = false;
     await rider.save();
+
+    const orderDetails = await RiderOrderHistory.findById(
+      riderOrderHistory._id
+    ).populate({
+      path: "group_order_ids",
+      select: "_id tracking_status",
+    });
+
+    const message = `A new group order has been accepted for delivery!`;
+    // Notify the admin using Socket.IO
+    notifyAdmin(orderDetails, message, req.app.get("io"));
 
     // Send response
     res.status(200).json({
