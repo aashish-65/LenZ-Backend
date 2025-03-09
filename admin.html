@@ -1,37 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel</title>
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-</head>
-<body>
-  <h1>Admin Panel</h1>
-  <div id="notifications"></div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  </head>
+  <body>
+    <h1>Admin Panel</h1>
+    <div id="notifications"></div>
 
-  <script>
-    const socket = io('https://lenz-backend.onrender.com');
+    <script>
+      const socket = io("https://lenz-backend.onrender.com");
 
-    // Join the admin room
-    socket.emit('joinAdminRoom');
+      // Join the admin room
+      socket.emit("joinAdminRoom");
 
-    // Listen for new group order notifications
-    socket.on('newGroupOrder', (data) => {
-      console.log('New group order notification:', data);
+      // Listen for new group order notifications
+      socket.on("newGroupOrder", (data) => {
+        console.log("New group order notification:", data);
 
-      // Display the notification in the admin panel
-      const notificationsDiv = document.getElementById('notifications');
-      const notification = document.createElement('div');
-      notification.innerHTML = `
+        // Display the notification in the admin panel
+        const notificationsDiv = document.getElementById("notifications");
+        const notification = document.createElement("div");
+        //       notification.innerHTML = `
+        //         <p><strong>New Group Order!</strong></p>
+        //         <p>Order ID: ${data.groupOrderId}</p>
+        //         <p>User ID: ${data.userId}</p>
+        //         <p>Total Amount: ${data.totalAmount}</p>
+        //         <p>Payment Status: ${data.paymentStatus}</p>
+        //       `;
+
+        notification.innerHTML = `
         <p><strong>New Group Order!</strong></p>
-        <p>Order ID: ${data.groupOrderId}</p>
-        <p>User ID: ${data.userId}</p>
-        <p>Total Amount: ${data.totalAmount}</p>
-        <p>Payment Status: ${data.paymentStatus}</p>
+        <p>${data.data}</p>
       `;
-      notificationsDiv.appendChild(notification);
-    });
-  </script>
-</body>
+        notificationsDiv.appendChild(notification);
+      });
+    </script>
+  </body>
 </html>

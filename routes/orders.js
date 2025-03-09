@@ -228,7 +228,7 @@ router.post("/create-group-order", async (req, res) => {
 // Function to notify the admin (you can implement this logic)
 const notifyAdmin = (groupOrder, io) => {
   console.log(
-    `Notification: A new group order has been created with ID ${groupOrder._id}`
+    `Notification: A new group order has been created with ID ${groupOrder}`
   );
 
   // Emit a real-time event to the admin
@@ -778,7 +778,7 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
 // Function to notify the admin (you can implement this logic)
 const notifyRider = (groupOrder, io) => {
   console.log(
-    `Notification: A new group order has been created with ID ${groupOrder._id}`
+    `Notification: A new group order has been created with ID ${groupOrder}`
   );
 
   // Emit a real-time event to the admin
