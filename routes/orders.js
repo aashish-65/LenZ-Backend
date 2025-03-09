@@ -209,7 +209,7 @@ router.post("/create-group-order", async (req, res) => {
     await user.save();
 
     // Notify the admin using Socket.IO
-    notifyAdmin(savedGroupOrder, req.app.get("io"));
+    notifyAdmin(savedOrderHistory, req.app.get("io"));
 
     res.status(201).json({
       message: "Group order created successfully",
