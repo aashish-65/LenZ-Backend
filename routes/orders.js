@@ -208,8 +208,13 @@ router.post("/create-group-order", async (req, res) => {
     user.creditBalance = user.creditBalance + savedGroupOrder.leftAmount;
     await user.save();
 
+    const orderDetails = await RiderOrderHistory.findById(savedOrderHistory._id).populate({
+      path: "group_order_ids",
+      select: "_id tracking_status",
+    });
+
     // Notify the admin using Socket.IO
-    notifyAdmin(savedOrderHistory, req.app.get("io"));
+    notifyAdmin(orderDetails, req.app.get("io"));
 
     res.status(201).json({
       message: "Group order created successfully",
@@ -217,6 +222,7 @@ router.post("/create-group-order", async (req, res) => {
       data: savedGroupOrder,
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       message: "Failed to create group order",
       confirmation: false,
@@ -741,7 +747,6 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
       grouped_orders: groupedOrdersArray,
     });
     const savedOrderHistory = await newOrderHistory.save();
-
     // Update the group order with the saved order history id
     const updateHistoryId = await GroupOrder.updateMany(
       { _id: { $in: groupOrderIds } },
@@ -775,8 +780,13 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
       });
     }
 
+    const orderDetails = await RiderOrderHistory.findById(savedOrderHistory._id).populate({
+      path: "group_order_ids",
+      select: "_id tracking_status",
+    });
+
     // Notify the admin using Socket.IO
-    notifyRider(savedOrderHistory, req.app.get("io"));
+    notifyRider(orderDetails, req.app.get("io"));
 
     res.status(200).json({
       message: "Admin pickup key assigned successfully",
@@ -784,6 +794,7 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
       data: { admin_pickup_key: adminPickupKey, groupOrderIds },
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       message: "Failed to assign common pickup key",
       confirmation: false,
