@@ -320,13 +320,18 @@ router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
       });
     }
 
-    // Update the group order with rider details and change status
-    groupOrder.tracking_status = "Pickup Accepted";
-    await groupOrder.save();
-
     // Check if shop_pickup._id exists
     if (groupOrder.shop_pickup && groupOrder.shop_pickup._id) {
-      const riderOrderHistory = await RiderOrderHistory.findByIdAndUpdate(
+      const riderOrderHistory = await RiderOrderHistory.findById(
+        groupOrder.shop_pickup._id._id
+      );
+      if (riderOrderHistory.rider_id) {
+        return res.status(400).json({
+          message: "Rider is already assigned to this order",
+          confirmation: false,
+        });
+      }
+      await RiderOrderHistory.findByIdAndUpdate(
         groupOrder.shop_pickup._id._id,
         { rider_id: pickup_rider_id },
         { new: true } // Return the updated document
@@ -338,6 +343,10 @@ router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
         });
       }
     }
+
+    // Update the group order with rider details and change status
+    groupOrder.tracking_status = "Pickup Accepted";
+    await groupOrder.save();
 
     // Generate a 6-digit OTP
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -836,7 +845,7 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
       });
     }
 
-    if(riderOrderHistory.rider_id) {
+    if (riderOrderHistory.rider_id) {
       return res.status(400).json({
         message: "Rider already assigned",
         confirmation: false,
