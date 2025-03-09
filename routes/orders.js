@@ -293,6 +293,14 @@ router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
         .json({ message: "GroupOrder not found", confirmation: false });
     }
 
+    // Validate if the order is in the correct status
+    if (groupOrder.tracking_status !== "Order Placed For Pickup") {
+      return res.status(400).json({
+        message: "Order is not in 'Order Placed For Pickup' status",
+        confirmation: false,
+      });
+    }
+
     // Validate if the rider exists
     const rider = await Rider.findById(pickup_rider_id);
     if (!rider) {
@@ -824,6 +832,13 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
     if (!riderOrderHistory) {
       return res.status(404).json({
         message: "RiderOrderHistory not found for the given key",
+        confirmation: false,
+      });
+    }
+
+    if(riderOrderHistory.rider_id) {
+      return res.status(400).json({
+        message: "Rider already assigned",
         confirmation: false,
       });
     }
