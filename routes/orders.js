@@ -233,11 +233,12 @@ const notifyAdmin = (groupOrder, io) => {
 
   // Emit a real-time event to the admin
   io.to("adminRoom").emit("newGroupOrder", {
-    message: "A new group order has been created!",
-    groupOrderId: groupOrder._id,
-    userId: groupOrder.userId,
-    totalAmount: groupOrder.totalAmount,
-    paymentStatus: groupOrder.paymentStatus,
+    message: "A new group order has been created from shop!",
+    data: groupOrder,
+    // groupOrderId: groupOrder._id,
+    // userId: groupOrder.userId,
+    // totalAmount: groupOrder.totalAmount,
+    // paymentStatus: groupOrder.paymentStatus,
   });
 };
 
@@ -757,6 +758,9 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
       });
     }
 
+    // Notify the admin using Socket.IO
+    notifyRider(savedOrderHistory, req.app.get("io"));
+
     res.status(200).json({
       message: "Admin pickup key assigned successfully",
       confirmation: true,
@@ -770,6 +774,19 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
     });
   }
 });
+
+// Function to notify the admin (you can implement this logic)
+const notifyRider = (groupOrder, io) => {
+  console.log(
+    `Notification: A new group order has been created with ID ${groupOrder._id}`
+  );
+
+  // Emit a real-time event to the admin
+  io.to("adminRoom").emit("newGroupOrder", {
+    message: "A new group order has been created from admin!",
+    data: groupOrder,
+  });
+};
 
 // POST /api/orders/assign-rider
 router.post("/assign-rider", verifyApiKey, async (req, res) => {
