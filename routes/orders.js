@@ -236,7 +236,7 @@ router.post("/create-group-order", async (req, res) => {
 
 // Function to notify the admin (you can implement this logic)
 const notifyAdmin = (groupOrder, message, io) => {
-  console.log(`Notification: ${message} with ID ${groupOrder}`);
+  // console.log(`Notification: ${message} with ID ${groupOrder}`);
 
   // Emit a real-time event to the admin
   io.to("adminRoom").emit("newGroupOrder", {
@@ -261,7 +261,7 @@ router.get("/get-all-group-orders", verifyApiKey, async (req, res) => {
 router.get("/get-group-orders", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    console.log(userId);
+    // console.log(userId);
     const groupOrders = await GroupOrder.find({ userId }).populate("orders");
     res.status(200).json({ data: groupOrders });
   } catch (error) {

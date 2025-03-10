@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const Rider = require("../models/Rider");
 const nodemailer = require("nodemailer");
 const RiderOrderHistory = require("../models/RiderOrderHistory");
+const Admin = require("../models/Admin");
 require("dotenv").config();
 
 const router = express.Router();
@@ -39,7 +40,7 @@ const verifyApiKey = (req, res, next) => {
 
 // User Signup
 router.post("/signup", verifyApiKey, async (req, res) => {
-  const { name, email, phone, password, vehicleNumber } = req.body;
+  const { name, email, phone, password, vehicleNumber, adminId } = req.body;
 
   try {
     // Check if the user already exists
@@ -154,10 +155,18 @@ router.post("/signup", verifyApiKey, async (req, res) => {
     await newRider.save();
     await transporter.sendMail(mailOptions);
 
-    res.status(201).json({ message: "Signup successful", newRider });
+    authToken = Math.floor(100000 + Math.random() * 900000);
+    const admin = await Admin.findOne({adminId: adminId});
+    if (!admin) {
+      return res.status(404).json({ error: "Admin not found" });
+    }
+    admin.authToken = authToken;
+    await admin.save();
+
+    return res.status(201).json({ message: "Signup successful", newRider });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Server error during signup" });
+    return res.status(500).json({ error: "Server error during signup" });
   }
 });
 
