@@ -7,8 +7,8 @@ const riderSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   vehicleNumber: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  isAvailable: { type: Boolean, default: true }, // To track rider availability
-  isWorking: { type: Boolean, default: false }, // To track rider working status
+  isAvailable: { type: Boolean, default: true },
+  isWorking: { type: Boolean, default: false },
   totalOrders: { type: Number, default: 0 },
   totalEarnings: { type: Number, default: 0 },
   dailyEarnings: { type: Number, default: 0 },

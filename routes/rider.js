@@ -43,6 +43,10 @@ router.post("/signup", verifyApiKey, async (req, res) => {
   const { name, email, phone, password, vehicleNumber, adminId } = req.body;
 
   try {
+    //Validate the input fields
+    if (!name || !email || !phone || !password || !vehicleNumber || !adminId) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
     // Check if the user already exists
     const existingRider = await Rider.findOne({ email });
 
