@@ -1335,10 +1335,12 @@ router.patch("/:orderKey/complete-transit", verifyApiKey, async (req, res) => {
   }
 });
 
-router.get("/active-shop-orders", verifyApiKey, async (req, res) => {
+router.get("/active-shop-orders/:shopId", verifyApiKey, async (req, res) => {
   try {
+    const { shopId } = req.params;
     // Get group orders with specified tracking statuses
     const groupOrders = await GroupOrder.find({
+      userId: shopId,
       tracking_status: { $in: ["Pickup Accepted", "Out For Delivery"] },
     }).populate("shop_pickup._id admin_pickup._id");
 
