@@ -40,18 +40,20 @@ const verifyApiKey = (req, res, next) => {
 
 // User Signup
 router.post("/signup", verifyApiKey, async (req, res) => {
-  const { name, email, phone, password, vehicleNumber, adminId } = req.body;
+  const { name, email, phone, password, vehicleNumber, adminId, adminAuth } = req.body;
 
   try {
     //Validate the input fields
-    if (!name || !email || !phone || !password || !vehicleNumber || !adminId) {
+    if (!name || !email || !phone || !password || !vehicleNumber || !adminId || !adminAuth) {
       return res.status(400).json({ error: "Missing required fields" });
     }
     // Check if the user already exists
-    const existingRider = await Rider.findOne({ email });
+    const existingRider = await Rider.findOne({
+      $or: [{ email }, { phone }]
+    });
 
     if (existingRider) {
-      return res.status(401).json({ error: "Email already exists" });
+      return res.status(401).json({ error: "Rider already exists" });
     }
 
     // Hash the password
@@ -146,6 +148,16 @@ router.post("/signup", verifyApiKey, async (req, res) => {
       html: emailTemplate,
     };
 
+    const admin = await Admin.findOne({adminId: adminId});
+    if (!admin) {
+      return res.status(404).json({ error: "Admin not found" });
+    }
+
+    let correctAdminKey = admin.authToken;
+    if (adminAuth !== correctAdminKey) {
+      return res.status(401).json({ error: "Invalid Admin Key" });
+    }
+
     // Create a new user
     const newRider = new Rider({
       riderId,
@@ -153,18 +165,15 @@ router.post("/signup", verifyApiKey, async (req, res) => {
       email,
       phone,
       vehicleNumber,
+      adminId,
       password: hashedPassword,
     });
 
     await newRider.save();
     await transporter.sendMail(mailOptions);
 
-    authToken = Math.floor(100000 + Math.random() * 900000);
-    const admin = await Admin.findOne({adminId: adminId});
-    if (!admin) {
-      return res.status(404).json({ error: "Admin not found" });
-    }
-    admin.authToken = authToken;
+    newAuthToken = Math.floor(100000 + Math.random() * 900000);
+    admin.authToken = newAuthToken;
     await admin.save();
 
     return res.status(201).json({ message: "Signup successful", newRider });
