@@ -148,7 +148,7 @@ router.post("/signup", verifyApiKey, async (req, res) => {
       html: emailTemplate,
     };
 
-    const admin = await Admin.findOne({adminId: adminId});
+    const admin = await Admin.findOne({adminId});
     if (!admin) {
       return res.status(404).json({ error: "Admin not found" });
     }

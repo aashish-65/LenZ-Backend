@@ -6,7 +6,7 @@ const riderSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   vehicleNumber: { type: String, required: true, unique: true },
-  adminId: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required:true },
+  lenzAdminId: { type: String, required:true },
   password: { type: String, required: true },
   isAvailable: { type: Boolean, default: true },
   isWorking: { type: Boolean, default: false },
