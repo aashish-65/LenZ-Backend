@@ -165,7 +165,7 @@ router.post("/signup", verifyApiKey, async (req, res) => {
       email,
       phone,
       vehicleNumber,
-      adminId,
+      lenzAdminId: adminId,
       password: hashedPassword,
     });
 
