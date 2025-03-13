@@ -62,11 +62,11 @@ router.put("/:userId/edit-distance", verifyApiKey, async (req, res) => {
     }
 
     let delCharge = 0;
-    if(newDistance > 0 && newDistance <= 5){
+    if (newDistance > 0 && newDistance <= 5) {
       delCharge = 100;
-    }else if(newDistance > 5 && newDistance <= 7){
+    } else if (newDistance > 5 && newDistance <= 7) {
       delCharge = 125;
-    }else if(newDistance > 7 && newDistance <= 10){
+    } else if (newDistance > 7 && newDistance <= 10) {
       delCharge = 150;
     }
 
@@ -97,12 +97,10 @@ router.put("/:userId/edit-credit-bal", verifyApiKey, async (req, res) => {
     user.creditBalance = newCreditAmt;
     await user.save();
 
-    res
-      .status(200)
-      .json({
-        message: "Credit Amount updated successfully",
-        confirmation: true,
-      });
+    res.status(200).json({
+      message: "Credit Amount updated successfully",
+      confirmation: true,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Server error" });

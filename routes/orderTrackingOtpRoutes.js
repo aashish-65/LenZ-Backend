@@ -98,12 +98,10 @@ router.post("/verify-otp", authenticate, async (req, res) => {
 
     await groupOrder.save();
 
-    res
-      .status(200)
-      .json({
-        message: "OTP verified successfully.",
-        tracking_status: groupOrder.tracking_status,
-      });
+    res.status(200).json({
+      message: "OTP verified successfully.",
+      tracking_status: groupOrder.tracking_status,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to verify OTP." });

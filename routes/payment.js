@@ -37,13 +37,11 @@ router.post("/verify", async (req, res) => {
     return res.status(400).json({ msg: "Payment verification failed" });
   }
 
-  res
-    .status(200)
-    .json({
-      msg: "success",
-      paymentId: razorpay_payment_id,
-      orderId: razorpay_order_id,
-    });
+  res.status(200).json({
+    msg: "success",
+    paymentId: razorpay_payment_id,
+    orderId: razorpay_order_id,
+  });
 });
 
 module.exports = router;

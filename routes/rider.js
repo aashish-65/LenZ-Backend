@@ -40,16 +40,25 @@ const verifyApiKey = (req, res, next) => {
 
 // User Signup
 router.post("/signup", verifyApiKey, async (req, res) => {
-  const { name, email, phone, password, vehicleNumber, adminId, adminAuth } = req.body;
+  const { name, email, phone, password, vehicleNumber, adminId, adminAuth } =
+    req.body;
 
   try {
     //Validate the input fields
-    if (!name || !email || !phone || !password || !vehicleNumber || !adminId || !adminAuth) {
+    if (
+      !name ||
+      !email ||
+      !phone ||
+      !password ||
+      !vehicleNumber ||
+      !adminId ||
+      !adminAuth
+    ) {
       return res.status(400).json({ error: "Missing required fields" });
     }
     // Check if the user already exists
     const existingRider = await Rider.findOne({
-      $or: [{ email }, { phone }]
+      $or: [{ email }, { phone }],
     });
 
     if (existingRider) {
@@ -148,7 +157,7 @@ router.post("/signup", verifyApiKey, async (req, res) => {
       html: emailTemplate,
     };
 
-    const admin = await Admin.findOne({adminId});
+    const admin = await Admin.findOne({ adminId });
     if (!admin) {
       return res.status(404).json({ error: "Admin not found" });
     }
@@ -172,7 +181,7 @@ router.post("/signup", verifyApiKey, async (req, res) => {
     await newRider.save();
     await transporter.sendMail(mailOptions);
 
-    newAuthToken = Math.floor(100000 + Math.random() * 900000);
+    const newAuthToken = Math.floor(100000 + Math.random() * 900000);
     admin.authToken = newAuthToken;
     await admin.save();
 
@@ -189,7 +198,9 @@ router.post("/login", verifyApiKey, async (req, res) => {
   try {
     // Check if the rider exists
     if (typeof riderEmail !== "string" || typeof password !== "string") {
-      return res.status(400).json({ message: "Enter String Value!", confirmation: false });
+      return res
+        .status(400)
+        .json({ message: "Enter String Value!", confirmation: false });
     }
     const email = riderEmail;
     const rider = await Rider.findOne({ email });
@@ -207,9 +218,15 @@ router.post("/login", verifyApiKey, async (req, res) => {
         .json({ message: "Invalid Password", confirmation: false });
     }
 
-    res.json({ message: "Login Successful", riderId: rider.riderId ,confirmation: true });
+    res.json({
+      message: "Login Successful",
+      riderId: rider.riderId,
+      confirmation: true,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error during login", confirmation: false });
+    res
+      .status(500)
+      .json({ message: "Server error during login", confirmation: false });
   }
 });
 
@@ -297,7 +314,6 @@ router.put("/:riderId/edit-phone-number", verifyApiKey, async (req, res) => {
 // API to get all orders
 router.get("/order-history", verifyApiKey, async (req, res) => {
   try {
-
     // Find orders for the given rider_id
     const orders = await RiderOrderHistory.find().populate({
       path: "group_order_ids",
@@ -305,9 +321,7 @@ router.get("/order-history", verifyApiKey, async (req, res) => {
     });
 
     if (orders.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No orders found" });
+      return res.status(404).json({ message: "No orders found" });
     }
     // Respond with the filtered orders
     res.status(200).json(orders);

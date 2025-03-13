@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const nodemailer = require("nodemailer");
+const Admin = require("../models/Admin");
 require("dotenv").config();
 
 const router = express.Router();
@@ -27,6 +28,8 @@ router.post("/signup", async (req, res) => {
     shopName,
     alternatePhone,
     address,
+    adminId,
+    authToken,
   } = req.body;
 
   try {
@@ -144,6 +147,16 @@ router.post("/signup", async (req, res) => {
       html: emailTemplate,
     };
 
+    const admin = await Admin.findOne({ adminId });
+    if (!admin) {
+      return res.status(404).json({ error: "Admin not found" });
+    }
+
+    let correctAdminKey = admin.authToken;
+    if (authToken !== correctAdminKey) {
+      return res.status(401).json({ error: "Invalid Admin Key" });
+    }
+
     // Create a new user
     const newUser = new User({
       userId,
@@ -154,6 +167,7 @@ router.post("/signup", async (req, res) => {
       shopName,
       password: hashedPassword,
       plan,
+      lenzAdminId: adminId,
       address: {
         line1: address.line1,
         line2: address.line2 || "",
@@ -166,6 +180,10 @@ router.post("/signup", async (req, res) => {
 
     await newUser.save();
     await transporter.sendMail(mailOptions);
+
+    const newAuthToken = Math.floor(100000 + Math.random() * 900000);
+    admin.authToken = newAuthToken;
+    await admin.save();
 
     res.status(201).json({ message: "Signup successful", userId });
   } catch (error) {

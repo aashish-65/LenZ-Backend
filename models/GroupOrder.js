@@ -39,11 +39,19 @@ const groupOrderSchema = new mongoose.Schema(
       default: new mongoose.Types.ObjectId("67b2959793404c300f4c6cb0"),
     },
     admin_pickup: {
-      _id: { type: mongoose.Schema.Types.ObjectId, ref: "RiderOrderHistory", default: null },
+      _id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "RiderOrderHistory",
+        default: null,
+      },
       key: { type: String, default: null },
     },
     shop_pickup: {
-      _id: { type: mongoose.Schema.Types.ObjectId, ref: "RiderOrderHistory", default: null },
+      _id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "RiderOrderHistory",
+        default: null,
+      },
       key: { type: String, default: null },
     },
   },

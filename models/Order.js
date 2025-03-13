@@ -31,7 +31,6 @@ const orderSchema = new mongoose.Schema(
       enum: ["unpaid", "pending", "completed"],
       default: "unpaid",
     }, // Payment status
-    deliveryCharge: { type: Number, default: 0 }, // Delivery charge
   },
   { timestamps: true }
 );

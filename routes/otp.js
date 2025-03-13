@@ -132,7 +132,10 @@ router.post("/request-tracking-otp", verifyApiKey, async (req, res) => {
         if (!isValidId) {
           return res.status(400).json({ message: "Invalid groupOrder_id." });
         }
-        const existingOtp = await TrackingOtp.findOne({ groupOrder_id, purpose });
+        const existingOtp = await TrackingOtp.findOne({
+          groupOrder_id,
+          purpose,
+        });
         if (existingOtp) {
           return res.status(200).json(existingOtp);
         } else {
