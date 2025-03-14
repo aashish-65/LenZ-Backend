@@ -23,6 +23,8 @@ const userSchema = new mongoose.Schema(
     distance: { type: Number, default: 0 },
     creditBalance: { type: Number, default: 0 },
     deliveryCharge: { type: Number, default: 0 },
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date },
   },
   { timestamps: true }
 );
