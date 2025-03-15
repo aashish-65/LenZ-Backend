@@ -62,7 +62,7 @@ router.post("/signup", verifyApiKey, async (req, res) => {
     });
 
     if (existingRider) {
-      return res.status(401).json({ error: "Rider already exists" });
+      return res.status(409).json({ error: "Rider already exists" });
     }
 
     // Hash the password
