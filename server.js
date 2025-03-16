@@ -15,7 +15,7 @@ const profileRoutes = require("./routes/profile");
 const otpRoutes = require("./routes/otp");
 const paymentRoutes = require("./routes/payment");
 const riderRoutes = require("./routes/rider");
-const {startPing} = require("./pingServices");
+// const {startPing} = require("./pingServices");
 
 dotenv.config();
 const app = express();
@@ -72,4 +72,5 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {console.log(`Server running on port ${PORT}`);
-startPing("https://lenz-backend.onrender.com/api/test/");});
+// startPing("https://lenz-backend.onrender.com/api/test/");
+});
