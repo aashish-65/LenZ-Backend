@@ -15,6 +15,7 @@ const riderSchema = new mongoose.Schema(
     totalEarnings: { type: Number, default: 0 },
     dailyEarnings: { type: Number, default: 0 },
     dailyOrders: { type: Number, default: 0 },
+    fcmToken: { type: String, default: null },
   },
   { timestamps: true }
 );

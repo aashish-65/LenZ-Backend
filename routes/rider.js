@@ -359,22 +359,22 @@ router.get("/order-history/:riderId", async (req, res) => {
 });
 
 // Update Rider FCM Token
-router.post("/update-fcm-token", async (req, res) => {
+router.post("/update-fcm-token", verifyApiKey, async (req, res) => {
   try {
     const { riderId, fcmToken } = req.body;
 
     const rider = await Rider.findOne({ riderId });
     if (!rider) {
-      return res.status(404).json({ message: "Rider not found" });
+      return res.status(404).json({ message: "Rider not found", confirmation: false });
     }
 
     rider.fcmToken = fcmToken;
     await rider.save();
 
-    res.status(200).json({ message: "FCM Token updated successfully" });
+    res.status(200).json({ message: "FCM Token updated successfully", confirmation: true });
   } catch (error) {
     console.error("Error updating FCM Token:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error", confirmation: false });
   }
 });
 
