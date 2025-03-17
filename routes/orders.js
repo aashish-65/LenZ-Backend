@@ -10,7 +10,7 @@ const TrackingOtp = require("../models/TrackingOtp");
 const Rider = require("../models/Rider");
 const RiderOrderHistory = require("../models/RiderOrderHistory");
 const Admin = require("../models/Admin");
-const admin = require("../server");
+const admin = require("../firebase");
 
 const nodemailer = require("nodemailer");
 const { verify } = require("crypto");
