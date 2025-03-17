@@ -137,7 +137,7 @@ const sendFCMNotification = async (title, body, data) => {
         title: title,
         body: body,
       },
-      data: data
+      data: data,
     };
 
     const response = await admin.messaging().sendEachForMulticast({
@@ -249,7 +249,7 @@ router.post("/create-group-order", async (req, res) => {
 
     const title = "New Order Available";
     const body = `A new order is ready for pickup from SHOP!`;
-    const data = orderDetails;
+    const data = {message: "Hi"};
 
     // Send FCM notification to riders
     sendFCMNotification(title, body, data);
@@ -821,7 +821,7 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
 
     const title = "New Order Available";
     const body = `A new order is ready for pickup from ADMIN!`;
-    const data = orderDetails;
+    const data = {message: "admin"};
 
     // Send FCM notification to riders
     sendFCMNotification(title, body, data);
