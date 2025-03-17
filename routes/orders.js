@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const axios = require("axios");
 const router = express.Router();
 const authenticate = require("../middleware/authenticate");
-// Import your database model (adjust based on your DB setup)
 const Order = require("../models/Order");
 const User = require("../models/User");
 const GroupOrder = require("../models/GroupOrder");
@@ -11,7 +10,7 @@ const TrackingOtp = require("../models/TrackingOtp");
 const Rider = require("../models/Rider");
 const RiderOrderHistory = require("../models/RiderOrderHistory");
 const Admin = require("../models/Admin");
-const admin = require("../firebase");
+const admin = require("../server");
 
 const nodemailer = require("nodemailer");
 const { verify } = require("crypto");
@@ -123,7 +122,8 @@ const sendFCMNotification = async (title, body, data) => {
   try {
     const riders = await Rider.find({
       isAvailable: true,
-      fcmToken: { $ne: null },
+      isWorking: true,
+      fcmToken: { $exists: true, $ne: null },
     });
 
     const tokens = riders.map((rider) => rider.fcmToken);
@@ -137,11 +137,13 @@ const sendFCMNotification = async (title, body, data) => {
         title: title,
         body: body,
       },
-      data: data,
-      tokens: tokens,
+      data: data
     };
 
-    const response = await admin.messaging().sendEachForMulticast(payload);
+    const response = await admin.messaging().sendEachForMulticast({
+      tokens: tokens,
+      ...payload,
+    });
     console.log("FCM Notification Sent:", response);
   } catch (error) {
     console.error("Error sending FCM notification:", error);
@@ -251,8 +253,6 @@ router.post("/create-group-order", async (req, res) => {
 
     // Send FCM notification to riders
     sendFCMNotification(title, body, data);
-    // Notify the admin using Socket.IO
-    // notifyAdmin(orderDetails, message, req.app.get("io"));
 
     res.status(201).json({
       message: "Group order created successfully",
@@ -268,21 +268,6 @@ router.post("/create-group-order", async (req, res) => {
     });
   }
 });
-
-// Function to notify the admin (you can implement this logic)
-// const notifyAdmin = (groupOrder, message, io) => {
-//   // console.log(`Notification: ${message} with ID ${groupOrder}`);
-
-//   // Emit a real-time event to the admin
-//   io.to("adminRoom").emit("newGroupOrder", {
-//     message: message,
-//     data: groupOrder,
-//     // groupOrderId: groupOrder._id,
-//     // userId: groupOrder.userId,
-//     // totalAmount: groupOrder.totalAmount,
-//     // paymentStatus: groupOrder.paymentStatus,
-//   });
-// };
 
 router.get("/get-all-group-orders", verifyApiKey, async (req, res) => {
   try {
@@ -840,9 +825,6 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
 
     // Send FCM notification to riders
     sendFCMNotification(title, body, data);
-    // const message = `A new group order has been created from admin!`;
-    // Notify the admin using Socket.IO
-    // notifyAdmin(orderDetails, message, req.app.get("io"));
 
     res.status(200).json({
       message: "Admin pickup key assigned successfully",

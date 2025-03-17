@@ -2,8 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const http = require("http");
-const { Server } = require("socket.io");
+const admin = require("firebase-admin");
 
 const authRoutes = require("./routes/auth");
 const testRoutes = require("./routes/test");
@@ -19,13 +18,22 @@ const riderRoutes = require("./routes/rider");
 
 dotenv.config();
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
+// Initialize Firebase Admin SDK
+let serviceAccount;
+try {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} catch (error) {
+  console.error("Error parsing FIREBASE_SERVICE_ACCOUNT:", error);
+}
+
+if (serviceAccount) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+  console.log("Firebase Admin Initialized");
+} else {
+  console.error("Firebase service account is missing!");
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -40,8 +48,6 @@ mongoose
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.log(err));
 
-app.set("io", io);
-
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/test", testRoutes);
@@ -54,23 +60,9 @@ app.use("/api/otp", otpRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/riders", riderRoutes);
 
-// Socket.IO Connection
-io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
-
-  // Join the admin room (if the user is an admin)
-  socket.on("joinAdminRoom", () => {
-    socket.join("adminRoom");
-    console.log("Admin joined the admin room");
-  });
-
-  // Handle disconnection
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-  });
-});
-
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {console.log(`Server running on port ${PORT}`);
+app.listen(PORT, () => {console.log(`Server running on port ${PORT}`);
 // startPing("https://lenz-backend.onrender.com/api/test/");
 });
+
+module.exports = admin;
