@@ -11,6 +11,8 @@ const Rider = require("../models/Rider");
 const RiderOrderHistory = require("../models/RiderOrderHistory");
 const Admin = require("../models/Admin");
 const admin = require("../firebase");
+const dotenv = require("dotenv");
+dotenv.config();
 
 const nodemailer = require("nodemailer");
 const { verify } = require("crypto");
@@ -132,21 +134,35 @@ const sendFCMNotification = async (title, body, data) => {
       return;
     }
 
-    const payload = {
-      notification: {
-        title: title,
-        body: body,
-      },
-      data: data,
-    };
+    const isOperationCreate = data.operation === "create";
+
+    const payload = isOperationCreate
+      ? {
+          notification: {
+            title: title,
+            body: body,
+          },
+          android: {
+            notification: {
+              sound: "vivek",
+              channelId: "order_notifications",
+            },
+          },
+          data: data,
+        }
+      : { data: data };
 
     const response = await admin.messaging().sendEachForMulticast({
       tokens: tokens,
-      ...payload,
+      ...(isOperationCreate && {
+        notification: payload.notification,
+        android: payload.android,
+      }),
+      data: payload.data,
     });
-    console.log("FCM Notification Sent:", response);
+    console.log("FCM Notification Sent locally:", response);
   } catch (error) {
-    console.error("Error sending FCM notification:", error);
+    console.error("Error sending FCM notification locally:", error);
   }
 };
 
@@ -247,9 +263,11 @@ router.post("/create-group-order", async (req, res) => {
       select: "_id tracking_status",
     });
 
+    console.log(orderDetails);
+
     const title = "New Order Available";
     const body = `A new order is ready for pickup from SHOP!`;
-    const data = {message: "Hi"};
+    const data = { order_key: orderDetails.order_key, operation: "create" };
 
     // Send FCM notification to riders
     sendFCMNotification(title, body, data);
@@ -401,9 +419,10 @@ router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
       select: "_id tracking_status",
     });
 
-    const message = `A new group order has been accepted for pickup!`;
-    // Notify the admin using Socket.IO
-    notifyAdmin(orderDetails, message, req.app.get("io"));
+    const title = "Order Pickup Accepted";
+    const body = `Your order is accepted by ${rider.name} for pickup from shop!`;
+    const data = { order_key: orderDetails.order_key, operation: "remove" };
+    await sendFCMNotification(title, body, data);
 
     res.status(200).json({
       message: "Pickup accepted successfully. OTP sent to your email.",
@@ -821,7 +840,7 @@ router.post("/call-for-pickup", verifyApiKey, async (req, res) => {
 
     const title = "New Order Available";
     const body = `A new order is ready for pickup from ADMIN!`;
-    const data = {message: "admin"};
+    const data = { order_key: orderDetails.order_key, operation: "create" };
 
     // Send FCM notification to riders
     sendFCMNotification(title, body, data);
@@ -945,9 +964,12 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
       select: "_id tracking_status",
     });
 
-    const message = `A new group order has been accepted for delivery!`;
-    // Notify the admin using Socket.IO
-    notifyAdmin(orderDetails, message, req.app.get("io"));
+    const title = "New Order Available";
+    const body = `Rider ${rider.name} assigned for order from ADMIN!`;
+    const data = { order_key: orderDetails.order_key, operation: "remove" };
+
+    // Send FCM notification to riders
+    sendFCMNotification(title, body, data);
 
     // Send response
     res.status(200).json({
@@ -1387,7 +1409,7 @@ router.get("/active-shop-orders/:shopId", verifyApiKey, async (req, res) => {
         try {
           // Get OTP from external API
           const otpResponse = await axios.post(
-            "https://lenz-backend.onrender.com/api/otp/request-tracking-otp",
+            `${process.env.BACKEND_URL}/otp/request-tracking-otp`,
             {
               groupOrder_id: groupOrder._id,
               purpose: purpose,
@@ -1410,6 +1432,90 @@ router.get("/active-shop-orders/:shopId", verifyApiKey, async (req, res) => {
         // Get rider details based on tracking status
         const riderHistoryId =
           groupOrder.tracking_status === "Pickup Accepted"
+            ? groupOrder.shop_pickup?._id?._id
+            : groupOrder.admin_pickup?._id?._id;
+
+        if (riderHistoryId) {
+          const riderOrderHistory = await RiderOrderHistory.findById(
+            riderHistoryId
+          ).populate("rider_id");
+
+          if (riderOrderHistory?.rider_id) {
+            responseObj.deliveryPersonName = riderOrderHistory.rider_id.name;
+            responseObj.deliveryPersonPhone = riderOrderHistory.rider_id.phone;
+          }
+        }
+
+        return responseObj;
+      })
+    );
+
+    res.status(200).json({
+      message: "Group orders fetched successfully",
+      confirmation: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Failed to fetch group orders",
+      confirmation: false,
+      error: error.message,
+    });
+  }
+});
+
+router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    // Get group orders with specified tracking statuses
+    const groupOrders = await GroupOrder.find({
+      adminId: adminId,
+      tracking_status: { $in: ["Order Picked Up", "Delivery Accepted"] },
+    }).populate("shop_pickup._id admin_pickup._id");
+    // Process each group order
+    const result = await Promise.all(
+      groupOrders.map(async (groupOrder) => {
+        const responseObj = {
+          id: groupOrder._id.toString(),
+          trackingStatus: groupOrder.tracking_status,
+          otpCode: null,
+          deliveryPersonName: "Not Available",
+          deliveryPersonPhone: "Not Available",
+        };
+
+        // Determine purpose based on tracking status
+        const purpose =
+          groupOrder.tracking_status === "Order Picked Up"
+            ? "admin_delivery"
+            : "admin_pickup";
+
+        try {
+          // Get OTP from external API
+          const otpResponse = await axios.post(
+            `${process.env.BACKEND_URL}/otp/request-tracking-otp`,
+            {
+              groupOrder_id: groupOrder._id,
+              purpose: purpose,
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "lenz-api-key": "a99ed2023194a3356d37634474417f8b",
+              },
+            }
+          );
+
+          if (otpResponse.data && otpResponse.data.otp_code) {
+            responseObj.otpCode = otpResponse.data.otp_code;
+          }
+        } catch (error) {
+          console.error("Error fetching OTP:", error.message);
+        }
+
+        // Get rider details based on tracking status
+        const riderHistoryId =
+          groupOrder.tracking_status === "admin_delivery"
             ? groupOrder.shop_pickup?._id?._id
             : groupOrder.admin_pickup?._id?._id;
 
