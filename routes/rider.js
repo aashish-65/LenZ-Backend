@@ -244,7 +244,10 @@ router.get("/:riderId/details", verifyApiKey, async (req, res) => {
   const { riderId } = req.params;
 
   try {
-    const rider = await Rider.findOne({ riderId });
+    const rider = await Rider.findOne({ riderId }).populate({
+      path: "lenzAdminId",
+      select: "-password -authToken",
+    });
     if (!rider) {
       return res.status(404).json({ error: "Rider not found" });
     }
