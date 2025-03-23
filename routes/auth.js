@@ -168,7 +168,7 @@ router.post("/signup", async (req, res) => {
       shopName,
       password: hashedPassword,
       plan,
-      lenzAdminId: adminId,
+      lenzAdminId: admin._id,
       address: {
         line1: address.line1,
         line2: address.line2 || "",

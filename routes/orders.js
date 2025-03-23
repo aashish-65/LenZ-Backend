@@ -1469,17 +1469,22 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
   try {
     const { adminId } = req.params;
     // Get group orders with specified tracking statuses
+    console.log("Admin ID:", adminId);
     const groupOrders = await GroupOrder.find({
-      adminId: adminId,
-      tracking_status: { $in: ["Order Picked Up", "Delivery Accepted"] },
+      adminId,
+      // tracking_status: { $in: ["Order Picked Up", "Delivery Accepted"] },
     }).populate("shop_pickup._id admin_pickup._id");
+
+    console.log("Group Orders:", groupOrders);
     // Process each group order
     const result = await Promise.all(
       groupOrders.map(async (groupOrder) => {
         const responseObj = {
           id: groupOrder._id.toString(),
+          orderKey: "Not Available",
           trackingStatus: groupOrder.tracking_status,
           otpCode: null,
+          groupOrderIds: [],
           deliveryPersonName: "Not Available",
           deliveryPersonPhone: "Not Available",
         };
@@ -1490,11 +1495,17 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
             ? "admin_delivery"
             : "admin_pickup";
 
+          let order_key = "Not Available";
+          if(purpose === "admin_pickup"){
+            order_key = groupOrder.admin_pickup?.key;
+          }
+
         try {
           // Get OTP from external API
           const otpResponse = await axios.post(
             `${process.env.BACKEND_URL}/otp/request-tracking-otp`,
             {
+              order_key,
               groupOrder_id: groupOrder._id,
               purpose: purpose,
             },
@@ -1527,6 +1538,8 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
           if (riderOrderHistory?.rider_id) {
             responseObj.deliveryPersonName = riderOrderHistory.rider_id.name;
             responseObj.deliveryPersonPhone = riderOrderHistory.rider_id.phone;
+            responseObj.orderKey = riderOrderHistory.order_key;
+            responseObj.groupOrderIds = riderOrderHistory.group_order_ids;
           }
         }
 

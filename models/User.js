@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
     shopName: { type: String, required: true },
     plan: { type: String, required: true },
     userId: { type: Number, required: true, unique: true },
-    lenzAdminId: { type: String },
+    lenzAdminId: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
     address: {
       line1: { type: String, required: true },
       line2: { type: String },
