@@ -141,11 +141,13 @@ const sendFCMNotification = async (title, body, data) => {
           notification: {
             title: title,
             body: body,
+            priority: "high",
           },
           android: {
             notification: {
               sound: "vivek",
               channelId: "order_notifications",
+              priority: "high",
             },
           },
           data: data,
@@ -159,6 +161,7 @@ const sendFCMNotification = async (title, body, data) => {
         android: payload.android,
       }),
       data: payload.data,
+      priority: "high",
     });
     console.log("FCM Notification Sent locally:", response);
   } catch (error) {
