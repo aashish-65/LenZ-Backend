@@ -132,7 +132,7 @@ router.post("/signup", async (req, res) => {
       <td style="text-align: center; padding: 20px; color: #777777; font-size: 14px;">
         <p style="margin: 0;">LenZ © ${new Date().getFullYear()} | All Rights Reserved.</p>
         <p style="margin: 10px 0;">
-          <a href="https://lenz-booking.netlify.app/terms" style="color: #007BFF; text-decoration: none;">Terms of Service</a> | 
+          <a href="https://merchant.razorpay.com/policy/Q5DDWrbvqT2SkD/terms" style="color: #007BFF; text-decoration: none;">Terms of Service</a> | 
           <a href="https://lenz-booking.netlify.app/privacy" style="color: #007BFF; text-decoration: none;">Privacy Policy</a>
         </p>
       </td>
