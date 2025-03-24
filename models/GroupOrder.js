@@ -36,7 +36,7 @@ const groupOrderSchema = new mongoose.Schema(
     admin_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
-      default: new mongoose.Types.ObjectId("67b2959793404c300f4c6cb0"),
+      default: new mongoose.Types.ObjectId("67e14037294d30aae224fca3"),
     },
     admin_pickup: {
       _id: {

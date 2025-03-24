@@ -76,7 +76,7 @@ const generateUniqueAdminId = async () => {
 
 // Signup route
 router.post("/signup", verifyApiKey, async (req, res) => {
-  const { name, email, phone, password, address } = req.body;
+  const { name, email, phone, password, address, orderPhone } = req.body;
 
   try {
     // Check if the admin already exists
@@ -113,6 +113,7 @@ router.post("/signup", verifyApiKey, async (req, res) => {
       name,
       email,
       phone,
+      orderPhone,
       password: hashedPassword,
       adminId,
       address: {
