@@ -1385,6 +1385,10 @@ router.patch("/:orderKey/complete-transit", verifyApiKey, async (req, res) => {
 router.get("/active-shop-orders/:shopId", verifyApiKey, async (req, res) => {
   try {
     const { shopId } = req.params;
+    const isValidShopId = mongoose.Types.ObjectId.isValid(shopId);
+    if (!isValidShopId) {
+      return res.status(400).json({ message: "Invalid shop ID" });
+    }
     // Get group orders with specified tracking statuses
     const groupOrders = await GroupOrder.find({
       userId: shopId,
@@ -1470,6 +1474,16 @@ router.get("/active-shop-orders/:shopId", verifyApiKey, async (req, res) => {
 router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
   try {
     const { adminId } = req.params;
+
+    if (!adminId) {
+      return res.status(400).json({ message: "Admin ID is required" });
+    }
+
+    // Check if Object Id is valid
+    const isValidAdminId = mongoose.Types.ObjectId.isValid(adminId);
+    if (!isValidAdminId) {
+      return res.status(400).json({ message: "Invalid admin ID" });
+    }
 
     const groupOrders = await GroupOrder.find({
       admin_id: adminId,
