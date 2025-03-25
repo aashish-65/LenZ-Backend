@@ -29,7 +29,6 @@ router.get("/", verifyApiKey, async (req, res) => {
     const shops = await Shop.find();
     res.status(200).json(shops);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -43,7 +42,6 @@ router.get("/:userId", verifyApiKey, async (req, res) => {
     }
     res.status(200).json(user);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -78,7 +76,6 @@ router.put("/:userId/edit-distance", verifyApiKey, async (req, res) => {
       .status(200)
       .json({ message: "Distance updated successfully", confirmation: true });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -102,7 +99,6 @@ router.put("/:userId/edit-credit-bal", verifyApiKey, async (req, res) => {
       confirmation: true,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Server error" });
   }
 });

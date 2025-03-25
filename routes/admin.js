@@ -133,7 +133,6 @@ router.post("/signup", verifyApiKey, async (req, res) => {
       adminId,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Server error during signup" });
   }
 });

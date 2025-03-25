@@ -254,7 +254,6 @@ router.get("/:riderId/details", verifyApiKey, async (req, res) => {
 
     res.status(200).json(rider);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -368,16 +367,22 @@ router.post("/update-fcm-token", verifyApiKey, async (req, res) => {
 
     const rider = await Rider.findOne({ riderId });
     if (!rider) {
-      return res.status(404).json({ message: "Rider not found", confirmation: false });
+      return res
+        .status(404)
+        .json({ message: "Rider not found", confirmation: false });
     }
 
     rider.fcmToken = fcmToken;
     await rider.save();
 
-    res.status(200).json({ message: "FCM Token updated successfully", confirmation: true });
+    res
+      .status(200)
+      .json({ message: "FCM Token updated successfully", confirmation: true });
   } catch (error) {
     console.error("Error updating FCM Token:", error);
-    res.status(500).json({ message: "Internal server error", confirmation: false });
+    res
+      .status(500)
+      .json({ message: "Internal server error", confirmation: false });
   }
 });
 

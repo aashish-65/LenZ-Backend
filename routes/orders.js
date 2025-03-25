@@ -302,7 +302,6 @@ router.get("/get-all-group-orders", verifyApiKey, async (req, res) => {
 router.get("/get-group-orders", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    // console.log(userId);
     const groupOrders = await GroupOrder.find({ userId }).populate("orders");
     res.status(200).json({ data: groupOrders });
   } catch (error) {
@@ -1425,8 +1424,6 @@ router.get("/active-shop-orders/:shopId", verifyApiKey, async (req, res) => {
             }
           );
 
-          console.log("OTP Response:", otpResponse);
-
           if (otpResponse.data && otpResponse.data.otp_code) {
             responseObj.otpCode = otpResponse.data.otp_code;
           }
@@ -1473,14 +1470,14 @@ router.get("/active-shop-orders/:shopId", verifyApiKey, async (req, res) => {
 router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
   try {
     const { adminId } = req.params;
-    // Get group orders with specified tracking statuses
-    console.log("Admin ID:", adminId);
+
     const groupOrders = await GroupOrder.find({
-      adminId,
-      // tracking_status: { $in: ["Order Picked Up", "Delivery Accepted"] },
+      admin_id: adminId,
+      tracking_status: { $in: ["Order Picked Up", "Delivery Accepted"] },
     }).populate("shop_pickup._id admin_pickup._id");
 
-    console.log("Group Orders:", groupOrders);
+    console.log("Group orders:", groupOrders);
+
     // Process each group order
     const result = await Promise.all(
       groupOrders.map(async (groupOrder) => {
@@ -1490,6 +1487,7 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
           trackingStatus: groupOrder.tracking_status,
           otpCode: null,
           groupOrderIds: [],
+          shopName: "Not Available",
           deliveryPersonName: "Not Available",
           deliveryPersonPhone: "Not Available",
         };
@@ -1500,10 +1498,10 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
             ? "admin_delivery"
             : "admin_pickup";
 
-          let order_key = "Not Available";
-          if(purpose === "admin_pickup"){
-            order_key = groupOrder.admin_pickup?.key;
-          }
+        let order_key = "Not Available";
+        if (purpose === "admin_pickup") {
+          order_key = groupOrder.admin_pickup?.key;
+        }
 
         try {
           // Get OTP from external API
@@ -1517,10 +1515,12 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
             {
               headers: {
                 "Content-Type": "application/json",
-                "lenz-api-key": "a99ed2023194a3356d37634474417f8b",
+                "lenz-api-key": process.env.AUTHORIZED_API_KEY,
               },
             }
           );
+
+          console.log("OTP Response:", otpResponse.data);
 
           if (otpResponse.data && otpResponse.data.otp_code) {
             responseObj.otpCode = otpResponse.data.otp_code;
@@ -1531,7 +1531,7 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
 
         // Get rider details based on tracking status
         const riderHistoryId =
-          groupOrder.tracking_status === "admin_delivery"
+          groupOrder.tracking_status === "Order Picked Up"
             ? groupOrder.shop_pickup?._id?._id
             : groupOrder.admin_pickup?._id?._id;
 
@@ -1541,6 +1541,7 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
           ).populate("rider_id");
 
           if (riderOrderHistory?.rider_id) {
+            responseObj.shopName = riderOrderHistory.shop_details.shopName;
             responseObj.deliveryPersonName = riderOrderHistory.rider_id.name;
             responseObj.deliveryPersonPhone = riderOrderHistory.rider_id.phone;
             responseObj.orderKey = riderOrderHistory.order_key;

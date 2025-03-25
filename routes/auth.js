@@ -188,7 +188,6 @@ router.post("/signup", async (req, res) => {
 
     res.status(201).json({ message: "Signup successful", userId });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Server error during signup" });
   }
 });
@@ -245,7 +244,6 @@ router.get("/verify", async (req, res) => {
 
     res.json({ user });
   } catch (error) {
-    console.error("Error verifying token:", error);
     res.status(401).json({ error: "Invalid or expired token" });
   }
 });
@@ -286,8 +284,9 @@ router.post("/forgot-password", async (req, res) => {
     await transporter.sendMail(mailOptions);
     res.status(200).json({ message: "Password reset email sent" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server error during forgot password process" });
+    res
+      .status(500)
+      .json({ error: "Server error during forgot password process" });
   }
 });
 
@@ -318,7 +317,6 @@ router.post("/reset-password", async (req, res) => {
 
     res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Server error during password reset" });
   }
 });

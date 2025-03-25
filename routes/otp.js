@@ -9,7 +9,6 @@ const router = express.Router();
 
 const verifyApiKey = (req, res, next) => {
   const apiKey = req.headers["lenz-api-key"];
-  console.log(req.headers["lenz-api-key"]);
   const authorizedApiKey = process.env.AUTHORIZED_API_KEY;
 
   if (!apiKey) {
@@ -58,7 +57,6 @@ router.post("/request-otp", verifyApiKey, async (req, res) => {
 
     res.status(200).json({ message: "OTP sent successfully." });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Failed to send OTP." });
   }
 });
@@ -72,8 +70,6 @@ router.post("/verify-otp", verifyApiKey, async (req, res) => {
   try {
     // Find the OTP in the database
     const record = await OTP.findOne({ email, otp });
-    console.log(email, otp);
-    console.log(record);
 
     if (!record) {
       return res.status(404).json({ message: "Invalid OTP." });
@@ -86,7 +82,6 @@ router.post("/verify-otp", verifyApiKey, async (req, res) => {
       .status(200)
       .json({ message: "OTP verified successfully.", confirmation: true });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Failed to verify OTP." });
   }
 });
@@ -121,7 +116,6 @@ router.post("/request-tracking-otp", verifyApiKey, async (req, res) => {
           return res.status(404).json({ message: "OTP not found." });
         }
       } catch (error) {
-        console.error(error);
         return res.status(500).json({ message: "Internal server error." });
       }
     } else {
@@ -142,12 +136,10 @@ router.post("/request-tracking-otp", verifyApiKey, async (req, res) => {
           return res.status(404).json({ message: "OTP not found." });
         }
       } catch (error) {
-        console.error(error);
         return res.status(500).json({ message: "Internal server error." });
       }
     }
   } catch (error) {
-    console.error(error);
     return res.status(500).json({ message: "Internal server error." });
   }
 });

@@ -15,7 +15,6 @@ router.get("/", authenticate, async (req, res) => {
     }
     res.json(user);
   } catch (err) {
-    console.error(err.message);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -51,7 +50,6 @@ router.put("/", authenticate, async (req, res) => {
     }
     res.json(updatedUser);
   } catch (err) {
-    console.error(err.message);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -59,7 +57,6 @@ router.put("/", authenticate, async (req, res) => {
 // Change Password Route
 router.post("/change-password", authenticate, async (req, res) => {
   const { oldPassword, newPassword } = req.body;
-  console.log(oldPassword, newPassword);
   // Validate inputs
   if (!oldPassword || !newPassword) {
     return res.status(400).json({ error: "All fields are required." });
@@ -74,8 +71,6 @@ router.post("/change-password", authenticate, async (req, res) => {
   try {
     // Find the user
     const user = await User.findById(req.user.id);
-    console.log(user);
-    console.log(req.user._id);
     if (!user) {
       return res.status(404).json({ error: "User not found." });
     }
@@ -100,7 +95,6 @@ router.post("/change-password", authenticate, async (req, res) => {
 
     res.status(200).json({ message: "Password updated successfully." });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Failed to update password." });
   }
 });

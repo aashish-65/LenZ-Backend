@@ -50,7 +50,6 @@ router.post("/request-otp", authenticate, async (req, res) => {
 
     res.status(200).json({ message: "OTP sent successfully.", otp });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Failed to send OTP." });
   }
 });
@@ -103,7 +102,6 @@ router.post("/verify-otp", authenticate, async (req, res) => {
       tracking_status: groupOrder.tracking_status,
     });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Failed to verify OTP." });
   }
 });
