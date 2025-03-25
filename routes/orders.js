@@ -1420,10 +1420,12 @@ router.get("/active-shop-orders/:shopId", verifyApiKey, async (req, res) => {
             {
               headers: {
                 "Content-Type": "application/json",
-                "lenz-api-key": "a99ed2023194a3356d37634474417f8b",
+                "lenz-api-key": process.env.AUTHORIZED_API_KEY,
               },
             }
           );
+
+          console.log("OTP Response:", otpResponse);
 
           if (otpResponse.data && otpResponse.data.otp_code) {
             responseObj.otpCode = otpResponse.data.otp_code;

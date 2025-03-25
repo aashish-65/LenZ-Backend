@@ -1,7 +1,8 @@
+const dotenv = require("dotenv");
+dotenv.config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const dotenv = require("dotenv");
 
 const authRoutes = require("./routes/auth");
 const testRoutes = require("./routes/test");
@@ -16,7 +17,6 @@ const riderRoutes = require("./routes/rider");
 const compression = require("compression");
 // const {startPing} = require("./pingServices");
 
-dotenv.config();
 const app = express();
 
 app.use(compression());
