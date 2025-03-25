@@ -1457,14 +1457,14 @@ router.get("/active-shop-orders/:shopId", verifyApiKey, async (req, res) => {
     );
 
     res.status(200).json({
-      message: "Group orders fetched successfully",
+      message: "Active shop orders fetched successfully",
       confirmation: true,
       data: result,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      message: "Failed to fetch group orders",
+      message: "Failed to fetch active shop orders",
       confirmation: false,
       error: error.message,
     });
@@ -1568,14 +1568,14 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
     );
 
     res.status(200).json({
-      message: "Group orders fetched successfully",
+      message: "Active admin orders fetched successfully",
       confirmation: true,
       data: result,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      message: "Failed to fetch group orders",
+      message: "Failed to fetch active admin orders",
       confirmation: false,
       error: error.message,
     });
