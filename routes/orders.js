@@ -1,5 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const { ObjectId } = require("mongoose").Types;
 const axios = require("axios");
 const router = express.Router();
 const authenticate = require("../middleware/authenticate");
@@ -1485,83 +1486,67 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
       return res.status(400).json({ message: "Invalid admin ID" });
     }
 
-    const groupOrders = await GroupOrder.find({
-      admin_id: adminId,
-      tracking_status: { $in: ["Order Picked Up", "Delivery Accepted"] },
-    }).populate("shop_pickup._id admin_pickup._id");
+    const riderOrderHistorys = await RiderOrderHistory.find().populate(
+      "group_order_ids rider_id"
+    );
 
-    console.log("Group orders:", groupOrders);
+    const filteredData = riderOrderHistorys.filter((item) => {
+      return (
+        item.group_order_ids[0] &&
+        item.group_order_ids[0].admin_id.equals(
+          new mongoose.Types.ObjectId(adminId)
+        ) &&
+        ["Order Picked Up", "Delivery Accepted"].includes(
+          item.group_order_ids[0].tracking_status
+        ) &&
+        item.isCompleted === false
+      );
+    });
 
-    // Process each group order
     const result = await Promise.all(
-      groupOrders.map(async (groupOrder) => {
+      filteredData.map(async (groupOrder) => {
         const responseObj = {
-          id: groupOrder._id.toString(),
-          orderKey: "Not Available",
-          trackingStatus: groupOrder.tracking_status,
+          id: groupOrder.group_order_ids[0]._id.toString(),
+          orderKey: groupOrder.order_key,
+          trackingStatus: groupOrder.group_order_ids[0].tracking_status,
           otpCode: null,
           groupOrderIds: [],
           shopName: "Not Available",
-          deliveryPersonName: "Not Available",
-          deliveryPersonPhone: "Not Available",
+          deliveryPersonName: groupOrder.rider_id.name,
+          deliveryPersonPhone: groupOrder.rider_id.phone,
         };
 
-        // Determine purpose based on tracking status
+        for (let order of groupOrder.group_order_ids) {
+          responseObj.groupOrderIds.push(order._id.toString());
+        }
+
         const purpose =
-          groupOrder.tracking_status === "Order Picked Up"
+          responseObj.trackingStatus === "Order Picked Up"
             ? "admin_delivery"
             : "admin_pickup";
 
-        let order_key = "Not Available";
-        if (purpose === "admin_pickup") {
-          order_key = groupOrder.admin_pickup?.key;
-        }
-
-        try {
-          // Get OTP from external API
-          const otpResponse = await axios.post(
-            `${process.env.BACKEND_URL}/otp/request-tracking-otp`,
-            {
-              order_key,
-              groupOrder_id: groupOrder._id,
-              purpose: purpose,
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "lenz-api-key": process.env.AUTHORIZED_API_KEY,
-              },
+            try {
+              const otpResponse = await axios.post(
+                `${process.env.BACKEND_URL}/otp/request-tracking-otp`,
+                {
+                  order_key: responseObj.orderKey,
+                  groupOrder_id: responseObj.id,
+                  purpose: purpose,
+                },
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                    "lenz-api-key": process.env.AUTHORIZED_API_KEY,
+                  },
+                }
+              );
+    
+              if (otpResponse.data && otpResponse.data.otp_code) {
+                responseObj.otpCode = otpResponse.data.otp_code;
+              }
+            } catch (error) {
+              console.error("Error fetching OTP:", error.message);
             }
-          );
-
-          console.log("OTP Response:", otpResponse.data);
-
-          if (otpResponse.data && otpResponse.data.otp_code) {
-            responseObj.otpCode = otpResponse.data.otp_code;
-          }
-        } catch (error) {
-          console.error("Error fetching OTP:", error.message);
-        }
-
-        // Get rider details based on tracking status
-        const riderHistoryId =
-          groupOrder.tracking_status === "Order Picked Up"
-            ? groupOrder.shop_pickup?._id?._id
-            : groupOrder.admin_pickup?._id?._id;
-
-        if (riderHistoryId) {
-          const riderOrderHistory = await RiderOrderHistory.findById(
-            riderHistoryId
-          ).populate("rider_id");
-
-          if (riderOrderHistory?.rider_id) {
-            responseObj.shopName = riderOrderHistory.shop_details.shopName;
-            responseObj.deliveryPersonName = riderOrderHistory.rider_id.name;
-            responseObj.deliveryPersonPhone = riderOrderHistory.rider_id.phone;
-            responseObj.orderKey = riderOrderHistory.order_key;
-            responseObj.groupOrderIds = riderOrderHistory.group_order_ids;
-          }
-        }
 
         return responseObj;
       })
@@ -1581,5 +1566,120 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
     });
   }
 });
+
+// router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
+//   try {
+//     const { adminId } = req.params;
+
+//     if (!adminId) {
+//       return res.status(400).json({ message: "Admin ID is required" });
+//     }
+
+//     // Check if Object Id is valid
+//     const isValidAdminId = mongoose.Types.ObjectId.isValid(adminId);
+//     if (!isValidAdminId) {
+//       return res.status(400).json({ message: "Invalid admin ID" });
+//     }
+
+//     const groupOrders = await GroupOrder.find({
+//       admin_id: adminId,
+//       tracking_status: { $in: ["Order Picked Up", "Delivery Accepted"] },
+//     }).populate("shop_pickup._id admin_pickup._id");
+
+//     console.log("Group orders:", groupOrders);
+
+//     // Process each group order
+//     const result = await Promise.all(
+//       groupOrders.map(async (groupOrder) => {
+//         const responseObj = {
+//           id: groupOrder._id.toString(),
+//           orderKey: "Not Available",
+//           trackingStatus: groupOrder.tracking_status,
+//           otpCode: null,
+//           groupOrderIds: [],
+//           shopName: "Not Available",
+//           deliveryPersonName: "Not Available",
+//           deliveryPersonPhone: "Not Available",
+//         };
+
+//         // Determine purpose based on tracking status
+//         const purpose =
+//           groupOrder.tracking_status === "Order Picked Up"
+//             ? "admin_delivery"
+//             : "admin_pickup";
+
+//         let order_key = "Not Available";
+//         if (purpose === "admin_pickup") {
+//           order_key = groupOrder.admin_pickup?.key;
+//         }
+
+//         console.log("Order key:", order_key);
+
+//         try {
+//           // Get OTP from external API
+//           const otpResponse = await axios.post(
+//             `${process.env.BACKEND_URL}/otp/request-tracking-otp`,
+//             {
+//               order_key,
+//               groupOrder_id: groupOrder._id,
+//               purpose: purpose,
+//             },
+//             {
+//               headers: {
+//                 "Content-Type": "application/json",
+//                 "lenz-api-key": process.env.AUTHORIZED_API_KEY,
+//               },
+//             }
+//           );
+
+//           console.log("OTP Response:", otpResponse.data);
+
+//           if (otpResponse.data && otpResponse.data.otp_code) {
+//             responseObj.otpCode = otpResponse.data.otp_code;
+//           }
+//         } catch (error) {
+//           console.error("Error fetching OTP:", error.message);
+//         }
+
+//         // Get rider details based on tracking status
+//         const riderHistoryId =
+//           groupOrder.tracking_status === "Order Picked Up"
+//             ? groupOrder.shop_pickup?._id?._id
+//             : groupOrder.admin_pickup?._id?._id;
+
+//         if (riderHistoryId) {
+//           const riderOrderHistory = await RiderOrderHistory.findById(
+//             riderHistoryId
+//           ).populate("rider_id");
+
+//           console.log("Rider Order History:", riderOrderHistory);
+
+//           if (riderOrderHistory?.rider_id) {
+//             // responseObj.shopName = riderOrderHistory.shop_details.shopName;
+//             responseObj.deliveryPersonName = riderOrderHistory.rider_id.name;
+//             responseObj.deliveryPersonPhone = riderOrderHistory.rider_id.phone;
+//             responseObj.orderKey = riderOrderHistory.order_key;
+//             responseObj.groupOrderIds = riderOrderHistory.group_order_ids;
+//           }
+//         }
+
+//         return responseObj;
+//       })
+//     );
+
+//     res.status(200).json({
+//       message: "Active admin orders fetched successfully",
+//       confirmation: true,
+//       data: result,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({
+//       message: "Failed to fetch active admin orders",
+//       confirmation: false,
+//       error: error.message,
+//     });
+//   }
+// });
 
 module.exports = router;
