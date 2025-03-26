@@ -18,6 +18,7 @@ dotenv.config();
 const nodemailer = require("nodemailer");
 const { verify } = require("crypto");
 const { group } = require("console");
+const e = require("express");
 
 const transporter = nodemailer.createTransport({
   service: "Gmail",
@@ -1486,9 +1487,24 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
       return res.status(400).json({ message: "Invalid admin ID" });
     }
 
-    const riderOrderHistorys = await RiderOrderHistory.find().populate(
-      "group_order_ids rider_id"
-    );
+    const riderOrderHistorys = await RiderOrderHistory.find()
+      .populate({
+        path: "group_order_ids",
+        select: "_id tracking_status admin_id",
+      })
+      .populate({
+        path: "rider_id",
+        select: "name phone",
+      });
+
+    // if riderOrderHistorys is empty return empty array
+    if (riderOrderHistorys.length === 0) {
+      return res.status(200).json({
+        message: "Active admin orders fetched successfully",
+        confirmation: true,
+        data: [],
+      });
+    }
 
     const filteredData = riderOrderHistorys.filter((item) => {
       return (
@@ -1525,28 +1541,28 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
             ? "admin_delivery"
             : "admin_pickup";
 
-            try {
-              const otpResponse = await axios.post(
-                `${process.env.BACKEND_URL}/otp/request-tracking-otp`,
-                {
-                  order_key: responseObj.orderKey,
-                  groupOrder_id: responseObj.id,
-                  purpose: purpose,
-                },
-                {
-                  headers: {
-                    "Content-Type": "application/json",
-                    "lenz-api-key": process.env.AUTHORIZED_API_KEY,
-                  },
-                }
-              );
-    
-              if (otpResponse.data && otpResponse.data.otp_code) {
-                responseObj.otpCode = otpResponse.data.otp_code;
-              }
-            } catch (error) {
-              console.error("Error fetching OTP:", error.message);
+        try {
+          const otpResponse = await axios.post(
+            `${process.env.BACKEND_URL}/otp/request-tracking-otp`,
+            {
+              order_key: responseObj.orderKey,
+              groupOrder_id: responseObj.id,
+              purpose: purpose,
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "lenz-api-key": process.env.AUTHORIZED_API_KEY,
+              },
             }
+          );
+
+          if (otpResponse.data && otpResponse.data.otp_code) {
+            responseObj.otpCode = otpResponse.data.otp_code;
+          }
+        } catch (error) {
+          console.error("Error fetching OTP:", error.message);
+        }
 
         return responseObj;
       })
