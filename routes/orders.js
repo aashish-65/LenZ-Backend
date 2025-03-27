@@ -428,7 +428,7 @@ router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
       <!-- OTP Section -->
       <tr>
         <td style="padding: 20px; text-align: center;">
-        <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">#${shortGroupId}</h1>
+        <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px; text-transform: uppercase;">#${shortGroupId}</h1>
           <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
           <table align="center" style="margin: 0 auto; border-spacing: 10px;">
             <tr>
@@ -574,7 +574,7 @@ router.post(
       <!-- OTP Section -->
       <tr>
         <td style="padding: 20px; text-align: center;">
-        <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">#${shortGroupId}</h1>
+        <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px; text-transform: uppercase;">#${shortGroupId}</h1>
           <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
           <table align="center" style="margin: 0 auto; border-spacing: 10px;">
             <tr>
@@ -707,7 +707,7 @@ router.post(
       <!-- OTP Section -->
       <tr>
         <td style="padding: 20px; text-align: center;">
-        <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">#${shortGroupId}</h1>
+        <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px; text-transform: uppercase;">#${shortGroupId}</h1>
           <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
           <table align="center" style="margin: 0 auto; border-spacing: 10px;">
             <tr>
@@ -1165,7 +1165,7 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
   <!-- OTP Section -->
   <tr>
     <td style="padding: 20px; text-align: center;">
-    <h1 style="color:#007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">$${pickupId}</h1>
+    <h1 style="color:#007BFF; font-size: 25px; margin: 0; letter-spacing: 3px; text-transform: uppercase;">#${pickupId}</h1>
       <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
       <table align="center" style="margin: 0 auto; border-spacing: 10px;">
         <tr>
@@ -1321,8 +1321,8 @@ router.post(
             otp_code: otp,
             purpose: "shop_delivery",
           });
-          
-          const shortGroupId = groupOrder._id.slice(-5);
+          const groupOrderId = groupOrder._id.toString();
+          const shortGroupId = groupOrderId.slice(-5);
           const pickupId = groupOrder.admin_pickup.key;
   
           const orderOtpEmailTemplate = `
@@ -1346,7 +1346,7 @@ router.post(
         <!-- OTP Section -->
         <tr>
           <td style="padding: 20px; text-align: center;">
-          <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">#${shortGroupId}</h1>
+          <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px; text-transform: uppercase;">#${shortGroupId}</h1>
             <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
             <table align="center" style="margin: 0 auto; border-spacing: 10px;">
               <tr>
@@ -1453,7 +1453,8 @@ router.post(
             purpose: "shop_delivery", 
           });
 
-          const shortGroupId = groupOrder._id.slice(-5);
+          const groupOrderId = groupOrder._id.toString();
+          const shortGroupId = groupOrderId.slice(-5);
           const pickupId = groupOrder.admin_pickup.key;
   
           const orderOtpEmailTemplate = `
@@ -1477,7 +1478,7 @@ router.post(
         <!-- OTP Section -->
         <tr>
           <td style="padding: 20px; text-align: center;">
-          <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">#${shortGroupId}</h1>
+          <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px; text-transform: uppercase;">#${shortGroupId}</h1>
             <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
             <table align="center" style="margin: 0 auto; border-spacing: 10px;">
               <tr>
