@@ -1,6 +1,5 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const { ObjectId } = require("mongoose").Types;
 const axios = require("axios");
 const router = express.Router();
 const authenticate = require("../middleware/authenticate");
@@ -12,8 +11,6 @@ const Rider = require("../models/Rider");
 const RiderOrderHistory = require("../models/RiderOrderHistory");
 const Admin = require("../models/Admin");
 const admin = require("../firebase");
-const dotenv = require("dotenv");
-dotenv.config();
 
 const nodemailer = require("nodemailer");
 const { verify } = require("crypto");
@@ -407,13 +404,83 @@ router.patch("/:groupOrderId/accept-pickup", verifyApiKey, async (req, res) => {
       purpose: "shop_pickup",
     });
 
+    const shortGroupId = groupOrderId.slice(-5);
+    const pickupId = groupOrder.shop_pickup.key;
+
+    const orderOtpEmailTemplate = `
+  <div style="font-family: 'Roboto', sans-serif; background-color: #f4f4f7; padding: 20px; margin: 0;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" 
+      style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; 
+      overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+
+      <!-- Header Section -->
+      <tr style="background-color: #007BFF; text-align: center;">
+        <td style="padding: 20px;">
+          <img src="https://lenz-booking.netlify.app/web-app-manifest-192x192.png" 
+            alt="LenZ Logo" style="height: 60px; max-width: 100%; margin-bottom: 10px;">
+          <h1 style="color: #ffffff; font-size: 20px; margin: 0;">Order Pickup OTP</h1>
+          <p style="color: #dce6f1; font-size: 14px; margin-top: 8px;">
+            Please give the below OTP to the rider to complete your order pickup.
+          </p>
+        </td>
+      </tr>
+
+      <!-- OTP Section -->
+      <tr>
+        <td style="padding: 20px; text-align: center;">
+        <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">#${shortGroupId}</h1>
+          <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
+          <table align="center" style="margin: 0 auto; border-spacing: 10px;">
+            <tr>
+              ${otp
+                .split("")
+                .map(
+                  (num) => `
+                <td style="font-size: 24px; font-weight: bold; color: #007BFF; 
+                  background-color: #f8f9fa; padding: 12px 18px; border-radius: 8px; 
+                  border: 1px solid #e3e6ea;">
+                  ${num}
+                </td>
+              `
+                )
+                .join("")}
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Order ID Section -->
+      <tr>
+        <td style="padding: 20px; text-align: center; color: #333333;">
+          <p style="font-size: 16px; margin-bottom: 5px;">
+            Pickup Key: <strong style="text-transform: uppercase;">${pickupId}</strong>
+          </p>
+        </td>
+      </tr>
+
+      <!-- Footer Section -->
+      <tr style="background-color: #f1f3f5;">
+        <td style="text-align: center; padding: 20px; color: #777777; font-size: 14px;">
+          <p style="margin: 0;">© LenZ ${new Date().getFullYear()} | All Rights Reserved.</p>
+          <p style="margin: 10px 0;">
+            <a href="https://merchant.razorpay.com/policy/Q5DDWrbvqT2SkD/terms" 
+              style="color: #007BFF; text-decoration: none;">Terms of Service</a> | 
+            <a href="https://lenz-booking.netlify.app/privacy" 
+              style="color: #007BFF; text-decoration: none;">Privacy Policy</a>
+          </p>
+        </td>
+      </tr>
+    </table>
+  </div>
+`;
+
     // Send the OTP to the user's email
     const userEmail = groupOrder.userId.email;
     await transporter.sendMail({
       from: `"LenZ" <${process.env.EMAIL_USER}>`,
       to: userEmail,
-      subject: "Your OTP for Order Pickup",
-      text: `Your OTP for order pickup is ${otp}. It will expire in 5 minutes.`,
+      subject: `Your OTP for Order Pickup #${pickupId}`,
+      html: orderOtpEmailTemplate,
     });
 
     const orderDetails = await RiderOrderHistory.findById(
@@ -451,7 +518,7 @@ router.post(
       const { groupOrderId } = req.params;
       const { otp_code } = req.body;
 
-      if (otp_code === "0000") {
+      if (otp_code === process.env.DEFAULT_OTP) {
         // Update the group order status
         const groupOrder = await GroupOrder.findById(groupOrderId).populate(
           "admin_id"
@@ -482,13 +549,84 @@ router.post(
           purpose: "admin_delivery",
         });
 
+        const shortGroupId = groupOrderId.slice(-5);
+        const pickupId = groupOrder.shop_pickup.key;
+        const otp = adminOtp;
+
+        const orderOtpEmailTemplate = `
+  <div style="font-family: 'Roboto', sans-serif; background-color: #f4f4f7; padding: 20px; margin: 0;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" 
+      style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; 
+      overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+
+      <!-- Header Section -->
+      <tr style="background-color: #007BFF; text-align: center;">
+        <td style="padding: 20px;">
+          <img src="https://lenz-booking.netlify.app/web-app-manifest-192x192.png" 
+            alt="LenZ Logo" style="height: 60px; max-width: 100%; margin-bottom: 10px;">
+          <h1 style="color: #ffffff; font-size: 20px; margin: 0;">Order Drop OTP</h1>
+          <p style="color: #dce6f1; font-size: 14px; margin-top: 8px;">
+            Please give the below OTP to the rider to complete your order receival.
+          </p>
+        </td>
+      </tr>
+
+      <!-- OTP Section -->
+      <tr>
+        <td style="padding: 20px; text-align: center;">
+        <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">#${shortGroupId}</h1>
+          <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
+          <table align="center" style="margin: 0 auto; border-spacing: 10px;">
+            <tr>
+              ${otp
+                .split("")
+                .map(
+                  (num) => `
+                <td style="font-size: 24px; font-weight: bold; color: #007BFF; 
+                  background-color: #f8f9fa; padding: 12px 18px; border-radius: 8px; 
+                  border: 1px solid #e3e6ea;">
+                  ${num}
+                </td>
+              `
+                )
+                .join("")}
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Order ID Section -->
+      <tr>
+        <td style="padding: 20px; text-align: center; color: #333333;">
+          <p style="font-size: 16px; margin-bottom: 5px;">
+            Pickup Key: <strong style="text-transform: uppercase;">${pickupId}</strong>
+          </p>
+        </td>
+      </tr>
+
+      <!-- Footer Section -->
+      <tr style="background-color: #f1f3f5;">
+        <td style="text-align: center; padding: 20px; color: #777777; font-size: 14px;">
+          <p style="margin: 0;">© LenZ ${new Date().getFullYear()} | All Rights Reserved.</p>
+          <p style="margin: 10px 0;">
+            <a href="https://merchant.razorpay.com/policy/Q5DDWrbvqT2SkD/terms" 
+              style="color: #007BFF; text-decoration: none;">Terms of Service</a> | 
+            <a href="https://lenz-booking.netlify.app/privacy" 
+              style="color: #007BFF; text-decoration: none;">Privacy Policy</a>
+          </p>
+        </td>
+      </tr>
+    </table>
+  </div>
+`;
+
         // Send the OTP to the admin's email
         const adminEmail = groupOrder.admin_id.email;
         await transporter.sendMail({
           from: `"LenZ" <${process.env.EMAIL_USER}>`,
           to: adminEmail,
-          subject: "Your OTP for Admin Receipt",
-          text: `Your OTP for admin receipt for order id : ${groupOrderId} is ${adminOtp}. It will expire in 5 minutes.`,
+          subject: `Your OTP for Order Receival #${pickupId}`,
+          html: orderOtpEmailTemplate,
         });
 
         groupOrder.tracking_status = "Order Picked Up";
@@ -544,13 +682,84 @@ router.post(
           purpose: "admin_delivery",
         });
 
+        const shortGroupId = groupOrderId.slice(-5);
+        const pickupId = groupOrder.shop_pickup.key;
+        const otp = adminOtp;
+
+        const orderOtpEmailTemplate = `
+  <div style="font-family: 'Roboto', sans-serif; background-color: #f4f4f7; padding: 20px; margin: 0;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" 
+      style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; 
+      overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+
+      <!-- Header Section -->
+      <tr style="background-color: #007BFF; text-align: center;">
+        <td style="padding: 20px;">
+          <img src="https://lenz-booking.netlify.app/web-app-manifest-192x192.png" 
+            alt="LenZ Logo" style="height: 60px; max-width: 100%; margin-bottom: 10px;">
+          <h1 style="color: #ffffff; font-size: 20px; margin: 0;">Order Drop OTP</h1>
+          <p style="color: #dce6f1; font-size: 14px; margin-top: 8px;">
+            Please give the below OTP to the rider to complete your order receival.
+          </p>
+        </td>
+      </tr>
+
+      <!-- OTP Section -->
+      <tr>
+        <td style="padding: 20px; text-align: center;">
+        <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">#${shortGroupId}</h1>
+          <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
+          <table align="center" style="margin: 0 auto; border-spacing: 10px;">
+            <tr>
+              ${otp
+                .split("")
+                .map(
+                  (num) => `
+                <td style="font-size: 24px; font-weight: bold; color: #007BFF; 
+                  background-color: #f8f9fa; padding: 12px 18px; border-radius: 8px; 
+                  border: 1px solid #e3e6ea;">
+                  ${num}
+                </td>
+              `
+                )
+                .join("")}
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <!-- Order ID Section -->
+      <tr>
+        <td style="padding: 20px; text-align: center; color: #333333;">
+          <p style="font-size: 16px; margin-bottom: 5px;">
+            Pickup Key: <strong style="text-transform: uppercase;">${pickupId}</strong>
+          </p>
+        </td>
+      </tr>
+
+      <!-- Footer Section -->
+      <tr style="background-color: #f1f3f5;">
+        <td style="text-align: center; padding: 20px; color: #777777; font-size: 14px;">
+          <p style="margin: 0;">© LenZ ${new Date().getFullYear()} | All Rights Reserved.</p>
+          <p style="margin: 10px 0;">
+            <a href="https://merchant.razorpay.com/policy/Q5DDWrbvqT2SkD/terms" 
+              style="color: #007BFF; text-decoration: none;">Terms of Service</a> | 
+            <a href="https://lenz-booking.netlify.app/privacy" 
+              style="color: #007BFF; text-decoration: none;">Privacy Policy</a>
+          </p>
+        </td>
+      </tr>
+    </table>
+  </div>
+`;
+
         // Send the OTP to the admin's email
         const adminEmail = groupOrder.admin_id.email;
         await transporter.sendMail({
           from: `"LenZ" <${process.env.EMAIL_USER}>`,
           to: adminEmail,
-          subject: "Your OTP for Admin Receipt",
-          text: `Your OTP for admin receipt for order id : ${groupOrderId} is ${adminOtp}. It will expire in 5 minutes.`,
+          subject: `Your OTP for Order Receival #${pickupId}`,
+          html: orderOtpEmailTemplate,
         });
 
         groupOrder.tracking_status = "Order Picked Up";
@@ -559,8 +768,6 @@ router.post(
         res.status(200).json({
           message: "OTP verified successfully. Admin OTP sent.",
           confirmation: true,
-          // data: groupOrder,
-          // otp: adminOtp,
         });
       }
     } catch (error) {
@@ -610,7 +817,7 @@ router.post(
           .json({ message: "Invalid Delivery Type", confirmation: false });
       }
 
-      if (otp_code === "0000") {
+      if (otp_code === process.env.DEFAULT_OTP) {
         const riderOrderHistory = await RiderOrderHistory.findByIdAndUpdate(
           groupOrder.shop_pickup._id._id,
           { isDropVerified: true },
@@ -935,6 +1142,65 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
       otp_code: otp,
       purpose: "admin_pickup",
     });
+    const pickupId = admin_pickup_key;
+
+    const orderOtpEmailTemplate = `
+<div style="font-family: 'Roboto', sans-serif; background-color: #f4f4f7; padding: 20px; margin: 0;">
+<table align="center" border="0" cellpadding="0" cellspacing="0" 
+  style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; 
+  overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+
+  <!-- Header Section -->
+  <tr style="background-color: #007BFF; text-align: center;">
+    <td style="padding: 20px;">
+      <img src="https://lenz-booking.netlify.app/web-app-manifest-192x192.png" 
+        alt="LenZ Logo" style="height: 60px; max-width: 100%; margin-bottom: 10px;">
+      <h1 style="color: #ffffff; font-size: 20px; margin: 0;">Order Pickup OTP</h1>
+      <p style="color: #dce6f1; font-size: 14px; margin-top: 8px;">
+        Please give the below OTP to the rider to complete your order pickup.
+      </p>
+    </td>
+  </tr>
+
+  <!-- OTP Section -->
+  <tr>
+    <td style="padding: 20px; text-align: center;">
+    <h1 style="color:#007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">$${pickupId}</h1>
+      <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
+      <table align="center" style="margin: 0 auto; border-spacing: 10px;">
+        <tr>
+          ${otp
+            .split("")
+            .map(
+              (num) => `
+            <td style="font-size: 24px; font-weight: bold; color: #007BFF; 
+              background-color: #f8f9fa; padding: 12px 18px; border-radius: 8px; 
+              border: 1px solid #e3e6ea;">
+              ${num}
+            </td>
+          `
+            )
+            .join("")}
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- Footer Section -->
+  <tr style="background-color: #f1f3f5;">
+    <td style="text-align: center; padding: 20px; color: #777777; font-size: 14px;">
+      <p style="margin: 0;">© LenZ ${new Date().getFullYear()} | All Rights Reserved.</p>
+      <p style="margin: 10px 0;">
+        <a href="https://merchant.razorpay.com/policy/Q5DDWrbvqT2SkD/terms" 
+          style="color: #007BFF; text-decoration: none;">Terms of Service</a> | 
+        <a href="https://lenz-booking.netlify.app/privacy" 
+          style="color: #007BFF; text-decoration: none;">Privacy Policy</a>
+      </p>
+    </td>
+  </tr>
+</table>
+</div>
+`;
 
     // Send the OTP to the admin's email
     const admin = await Admin.findById(admin_id);
@@ -942,8 +1208,8 @@ router.post("/assign-rider", verifyApiKey, async (req, res) => {
       await transporter.sendMail({
         from: `"LenZ" <${process.env.EMAIL_USER}>`,
         to: admin.email,
-        subject: "Your OTP for Order Delivery",
-        text: `Your OTP for order delivery with key ${admin_pickup_key} is ${otp}.`,
+        subject: `Your OTP for Order Delivery #${admin_pickup_key}`,
+        html: orderOtpEmailTemplate,
       });
     }
 
@@ -1035,7 +1301,7 @@ router.post(
         });
       }
 
-      if (otp_code === "0000") {
+      if (otp_code === process.env.DEFAULT_OTP) {
         // Fetch all group orders associated with the group_order_ids
         const groupOrders = await GroupOrder.find({
           _id: { $in: riderOrderHistory.group_order_ids },
@@ -1043,7 +1309,7 @@ router.post(
 
         // Generate and send OTPs for each group order
         for (const groupOrder of groupOrders) {
-          const userId = groupOrder.userId._id;
+          // const userId = groupOrder.userId._id;
           const userEmail = groupOrder.userId.email;
 
           // Generate a 6-digit OTP
@@ -1053,15 +1319,85 @@ router.post(
           await TrackingOtp.create({
             groupOrder_id: groupOrder._id,
             otp_code: otp,
-            purpose: "shop_delivery", // OTP purpose is shop_delivery
+            purpose: "shop_delivery",
           });
+          
+          const shortGroupId = groupOrder._id.slice(-5);
+          const pickupId = groupOrder.admin_pickup.key;
+  
+          const orderOtpEmailTemplate = `
+    <div style="font-family: 'Roboto', sans-serif; background-color: #f4f4f7; padding: 20px; margin: 0;">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" 
+        style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; 
+        overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+  
+        <!-- Header Section -->
+        <tr style="background-color: #007BFF; text-align: center;">
+          <td style="padding: 20px;">
+            <img src="https://lenz-booking.netlify.app/web-app-manifest-192x192.png" 
+              alt="LenZ Logo" style="height: 60px; max-width: 100%; margin-bottom: 10px;">
+            <h1 style="color: #ffffff; font-size: 20px; margin: 0;">Order Receival OTP</h1>
+            <p style="color: #dce6f1; font-size: 14px; margin-top: 8px;">
+              Please give the below OTP to the rider to complete your order receival.
+            </p>
+          </td>
+        </tr>
+  
+        <!-- OTP Section -->
+        <tr>
+          <td style="padding: 20px; text-align: center;">
+          <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">#${shortGroupId}</h1>
+            <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
+            <table align="center" style="margin: 0 auto; border-spacing: 10px;">
+              <tr>
+                ${otp
+                  .split("")
+                  .map(
+                    (num) => `
+                  <td style="font-size: 24px; font-weight: bold; color: #007BFF; 
+                    background-color: #f8f9fa; padding: 12px 18px; border-radius: 8px; 
+                    border: 1px solid #e3e6ea;">
+                    ${num}
+                  </td>
+                `
+                  )
+                  .join("")}
+              </tr>
+            </table>
+          </td>
+        </tr>
+  
+        <!-- Order ID Section -->
+        <tr>
+          <td style="padding: 20px; text-align: center; color: #333333;">
+            <p style="font-size: 16px; margin-bottom: 5px;">
+              Delivery Key: <strong style="text-transform: uppercase;">${pickupId}</strong>
+            </p>
+          </td>
+        </tr>
+  
+        <!-- Footer Section -->
+        <tr style="background-color: #f1f3f5;">
+          <td style="text-align: center; padding: 20px; color: #777777; font-size: 14px;">
+            <p style="margin: 0;">© LenZ ${new Date().getFullYear()} | All Rights Reserved.</p>
+            <p style="margin: 10px 0;">
+              <a href="https://merchant.razorpay.com/policy/Q5DDWrbvqT2SkD/terms" 
+                style="color: #007BFF; text-decoration: none;">Terms of Service</a> | 
+              <a href="https://lenz-booking.netlify.app/privacy" 
+                style="color: #007BFF; text-decoration: none;">Privacy Policy</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
 
           // Send the OTP to the user's email
           await transporter.sendMail({
             from: `"LenZ" <${process.env.EMAIL_USER}>`,
             to: userEmail,
-            subject: "Your OTP for Order Delivery",
-            text: `Your OTP for order delivery with order ID ${groupOrder._id} is ${otp}.`,
+            subject: `Your OTP for Order Receival #${pickupId}`,
+            html: orderOtpEmailTemplate,
           });
         }
 
@@ -1104,7 +1440,7 @@ router.post(
 
         // Generate and send OTPs for each group order
         for (const groupOrder of groupOrders) {
-          const userId = groupOrder.userId._id;
+          // const userId = groupOrder.userId._id;
           const userEmail = groupOrder.userId.email;
 
           // Generate a 6-digit OTP
@@ -1114,15 +1450,85 @@ router.post(
           await TrackingOtp.create({
             groupOrder_id: groupOrder._id,
             otp_code: otp,
-            purpose: "shop_delivery", // OTP purpose is shop_delivery
+            purpose: "shop_delivery", 
           });
+
+          const shortGroupId = groupOrder._id.slice(-5);
+          const pickupId = groupOrder.admin_pickup.key;
+  
+          const orderOtpEmailTemplate = `
+    <div style="font-family: 'Roboto', sans-serif; background-color: #f4f4f7; padding: 20px; margin: 0;">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" 
+        style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; 
+        overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+  
+        <!-- Header Section -->
+        <tr style="background-color: #007BFF; text-align: center;">
+          <td style="padding: 20px;">
+            <img src="https://lenz-booking.netlify.app/web-app-manifest-192x192.png" 
+              alt="LenZ Logo" style="height: 60px; max-width: 100%; margin-bottom: 10px;">
+            <h1 style="color: #ffffff; font-size: 20px; margin: 0;">Order Receival OTP</h1>
+            <p style="color: #dce6f1; font-size: 14px; margin-top: 8px;">
+              Please give the below OTP to the rider to confirm your order receival.
+            </p>
+          </td>
+        </tr>
+  
+        <!-- OTP Section -->
+        <tr>
+          <td style="padding: 20px; text-align: center;">
+          <h1 style="color: #007BFF; font-size: 25px; margin: 0; letter-spacing: 3px;">#${shortGroupId}</h1>
+            <p style="font-size: 16px; color: #333333; margin-bottom: 10px;">Your OTP is:</p>
+            <table align="center" style="margin: 0 auto; border-spacing: 10px;">
+              <tr>
+                ${otp
+                  .split("")
+                  .map(
+                    (num) => `
+                  <td style="font-size: 24px; font-weight: bold; color: #007BFF; 
+                    background-color: #f8f9fa; padding: 12px 18px; border-radius: 8px; 
+                    border: 1px solid #e3e6ea;">
+                    ${num}
+                  </td>
+                `
+                  )
+                  .join("")}
+              </tr>
+            </table>
+          </td>
+        </tr>
+  
+        <!-- Order ID Section -->
+        <tr>
+          <td style="padding: 20px; text-align: center; color: #333333;">
+            <p style="font-size: 16px; margin-bottom: 5px;">
+              Delivery Key: <strong style="text-transform: uppercase;">${pickupId}</strong>
+            </p>
+          </td>
+        </tr>
+  
+        <!-- Footer Section -->
+        <tr style="background-color: #f1f3f5;">
+          <td style="text-align: center; padding: 20px; color: #777777; font-size: 14px;">
+            <p style="margin: 0;">© LenZ ${new Date().getFullYear()} | All Rights Reserved.</p>
+            <p style="margin: 10px 0;">
+              <a href="https://merchant.razorpay.com/policy/Q5DDWrbvqT2SkD/terms" 
+                style="color: #007BFF; text-decoration: none;">Terms of Service</a> | 
+              <a href="https://lenz-booking.netlify.app/privacy" 
+                style="color: #007BFF; text-decoration: none;">Privacy Policy</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
 
           // Send the OTP to the user's email
           await transporter.sendMail({
             from: `"LenZ" <${process.env.EMAIL_USER}>`,
             to: userEmail,
-            subject: "Your OTP for Order Delivery",
-            text: `Your OTP for order delivery with order ID ${groupOrder._id} is ${otp}.`,
+            subject: `Your OTP for Order Receival #${pickupId}`,
+            html: orderOtpEmailTemplate,
           });
         }
 
@@ -1198,7 +1604,7 @@ router.post(
           .json({ message: "Invalid Delivery Type", confirmation: false });
       }
 
-      if (otp_code === "0000") {
+      if (otp_code === process.env.DEFAULT_OTP) {
         groupOrder.tracking_status = "Order Completed";
         await groupOrder.save();
 
