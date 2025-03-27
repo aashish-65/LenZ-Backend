@@ -1527,7 +1527,6 @@ router.get("/active-admin-orders/:adminId", verifyApiKey, async (req, res) => {
           trackingStatus: groupOrder.group_order_ids[0].tracking_status,
           otpCode: null,
           groupOrderIds: [],
-          shopName: "Not Available",
           deliveryPersonName: groupOrder.rider_id.name,
           deliveryPersonPhone: groupOrder.rider_id.phone,
         };
