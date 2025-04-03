@@ -60,7 +60,9 @@ router.put("/:userId/edit-distance", verifyApiKey, async (req, res) => {
     }
 
     let delCharge = 0;
-    if (newDistance > 0 && newDistance <= 5) {
+    if (newDistance > 0 && newDistance <= 2) {
+      delCharge = 60;
+    } else if (newDistance > 2 && newDistance <= 5) {
       delCharge = 100;
     } else if (newDistance > 5 && newDistance <= 7) {
       delCharge = 125;

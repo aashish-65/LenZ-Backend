@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const axios = require("axios");
 const router = express.Router();
+const nodemailer = require("nodemailer");
 const authenticate = require("../middleware/authenticate");
 const Order = require("../models/Order");
 const User = require("../models/User");
@@ -12,11 +13,6 @@ const RiderOrderHistory = require("../models/RiderOrderHistory");
 const Admin = require("../models/Admin");
 const admin = require("../firebase");
 
-const nodemailer = require("nodemailer");
-const { verify } = require("crypto");
-const { group } = require("console");
-const e = require("express");
-
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
@@ -24,6 +20,13 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASSWORD,
   },
 });
+
+const isPeakHour = () => {
+  const now = new Date();
+  const hours = now.getHours();
+  return hours >= 18 && hours < 20;
+  // return true;
+};
 
 const verifyApiKey = (req, res, next) => {
   const apiKey = req.headers["lenz-api-key"];
@@ -195,6 +198,9 @@ router.post("/create-group-order", async (req, res) => {
       0
     );
     const deliveryCharge = user.deliveryCharge;
+    if (isPeakHour()) {
+      deliveryCharge += 20;
+    }
     const finalAmount = totalAmount + deliveryCharge;
     const paidAmount =
       paymentOption === "full" ? totalAmount + deliveryCharge : deliveryCharge;
@@ -265,8 +271,6 @@ router.post("/create-group-order", async (req, res) => {
       select: "_id tracking_status",
     });
 
-    console.log(orderDetails);
-
     const title = "New Order Available";
     const body = `A new order is ready for pickup from SHOP!`;
     const data = { order_key: orderDetails.order_key, operation: "create" };
@@ -280,7 +284,6 @@ router.post("/create-group-order", async (req, res) => {
       data: savedGroupOrder,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       message: "Failed to create group order",
       confirmation: false,
