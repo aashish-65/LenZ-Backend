@@ -386,4 +386,37 @@ router.post("/update-fcm-token", verifyApiKey, async (req, res) => {
   }
 });
 
+router.post("/reset-password", verifyApiKey, async (req, res) => {
+  const { riderId, newPassword } = req.body;
+
+  try {
+    // Validate the input fields
+    if (!riderId || !newPassword) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Find the rider by ID
+    const rider = await Rider.findOne({ riderId });
+    if (!rider) {
+      return res.status(404).json({ error: "Rider not found" });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update the password
+    rider.password = hashedPassword;
+    await rider.save();
+
+    res.status(200).json({
+      message: "Password reset successfully",
+      confirmation: true,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error during password reset" });
+  }
+});
+
 module.exports = router;
